@@ -48,7 +48,7 @@ strip "$stage/astroquest"
 install -m755 "$root/tools/launch-frame.sh" "$stage/launch.sh"
 install -m755 "$root/tools/install-frame.sh" "$stage/install.sh"
 cp "$root/LICENSE" "$root/THIRD-PARTY-NOTICES.md" "$root/README-FRAME.md" \
-  "$root/README.md" "$root/README-PC-VR.md" "$stage/"
+  "$root/README.md" "$stage/"
 while IFS= read -r -d '' notice; do
   destination="$stage/licenses/${notice#"$source_dir/"}"
   mkdir -p "$(dirname "$destination")"

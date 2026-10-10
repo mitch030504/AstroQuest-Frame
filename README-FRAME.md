@@ -77,9 +77,10 @@ its sibling update.
     └── ...extracted update files
 ```
 
-The launcher accepts an extracted folder, not a PKG file. For a package made from
-your own dump, you can use the upstream Windows PC launcher's extractor with its
-bundled runtime, then copy the extracted folders to Frame.
+The launcher accepts an extracted folder, not a PKG file. To extract a package made
+from your own dump, use PkgTool from the
+[upstream AstroQuest PC release](https://github.com/evertec82/AstroQuest/releases)
+on a Windows PC, then copy the extracted folders to Frame.
 
 ### Linux PKG extraction caveat
 
@@ -207,10 +208,6 @@ frame per headset refresh. The launcher's `SHADPS4_VR_FPS_CAP=60` default does n
 override that fixed pace. To select the governor and apply its FPS cap, use
 `SHADPS4_VR_PACE=0` together with `SHADPS4_VR_FPS_CAP=60`. Available frame rates are
 quantized to the headset refresh rate; performance still depends on scene load.
-
-The Windows `pc-vr/settings.txt` and Android `vrhost.txt` files are not read by the
-Frame launcher. [README-PC-VR.md](README-PC-VR.md) has additional inherited OpenXR
-settings; use their environment variables for this build.
 
 ## Saves, updates and logs
 

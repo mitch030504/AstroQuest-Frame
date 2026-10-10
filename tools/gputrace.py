@@ -3,7 +3,7 @@
 
 The driver writes the trace when the core runs with
     MESA_GPU_TRACES=print MESA_GPU_TRACEFILE=<file>
-(tools/quest-sandbox-test.sh passes such settings through). Every line is an event with the time
+(MESA_GPU_TRACEFILE selects the output file). Every line is an event with the time
 the GPU reached it, in nanoseconds. This groups the render passes by what they draw to and how
 the driver chose to render them, and prints the milliseconds each group costs per frame.
 

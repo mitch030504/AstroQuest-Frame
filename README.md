@@ -25,8 +25,6 @@ and controller tracking have been observed on Steam Frame with SteamVR/OpenXR
 | D-pad | Added in v0.1.1; gameplay behavior awaits player confirmation |
 | Touchpad gadgets, microphone and separate gamepads | Implemented paths; unverified on Frame |
 
-Windows and Quest builds have not been rebuilt or checked for these releases.
-
 ## What you need
 
 - A Steam Frame running SteamOS and its built-in SteamVR/OpenXR runtime.
@@ -139,20 +137,12 @@ SDK pinned to `4.0.20260805.254769`. It produces
 `build/AstroQuest-SteamFrame-ARM64.tar.gz`. See
 [build details](README-FRAME.md#build-from-source) for the container and dependencies.
 
-## Upstream and other platforms
+## Upstream
 
 AstroQuest-Frame is based on
 [evertec82/AstroQuest](https://github.com/evertec82/AstroQuest), which builds on
-[bigmak94/AstroQuest](https://github.com/bigmak94/AstroQuest). Their PC performance
-changes and Quest host remain in the source tree.
-
-- [Windows PC VR reference](README-PC-VR.md)
-- [Meta Quest standalone reference](README-QUEST-VR.md)
-- [Upstream AstroQuest README and installation instructions](https://github.com/bigmak94/AstroQuest#readme)
-- [Upstream Quest and Windows releases](https://github.com/bigmak94/AstroQuest/releases)
-
-Those guides describe their respective platforms and upstream results. This fork's
-published assets are the Steam Frame ARM64 package and its checksum.
+[bigmak94/AstroQuest](https://github.com/bigmak94/AstroQuest). This fork focuses on
+the native Steam Frame ARM64 build; its releases contain the Frame package and checksum.
 
 ## License and attribution
 
@@ -174,20 +164,16 @@ To support the original AstroQuest project, use
   this would exist without their PlayStation 4 emulator: everything here is built on top of
   their years of work. Thank you!
 - [zenithblue-oss/shadps4-arm64](https://github.com/zenithblue-oss/shadps4-arm64) and
-  [Bachata S4](https://github.com/JICA98/Bachata-S4), for the ARM64 build of shadPS4, its FEX
-  integration and the Linux runtime it runs in on Android.
+  [Bachata S4](https://github.com/JICA98/Bachata-S4), for the ARM64 build of shadPS4,
+  FEX integration and Linux runtime work used by this port.
 - [FEX-Emu](https://github.com/FEX-Emu/FEX), which runs the game's x86-64 code on the
   headset's ARM processor.
 - [Mesa](https://www.mesa3d.org/) and its Turnip driver for Adreno GPUs. Frame uses
-  the SteamOS driver; the upstream Quest runtime uses
-  [Vauzi-17/mesa-tu8](https://github.com/Vauzi-17/mesa-tu8).
-- [LibOrbisPkg](https://github.com/maxton/LibOrbisPkg), whose PkgTool unpacks game packages
-  for the PC launcher.
+  the SteamOS driver.
+- [LibOrbisPkg](https://github.com/maxton/LibOrbisPkg), whose PkgTool can unpack game packages.
 - Everyone who reported what went wrong, and those who sent the fix along:
-  [ODevStudio](https://github.com/ODevStudio) for SteamVR and Valve Index support and the
-  desktop's spectator views, [Clodo76](https://github.com/Clodo76) for finding the game's
+  [Clodo76](https://github.com/Clodo76) for finding the game's
   1.04 executable from inside, [evertec82](https://github.com/evertec82) for what stopped the
   game under SteamVR.
-- [The Khronos Group](https://www.khronos.org/) for OpenXR and Vulkan,
-  [vgmstream](https://github.com/vgmstream/vgmstream) for documenting Sony's audio formats,
-  and [Virtual Desktop](https://www.vrdesktop.net/) for the PC streaming path.
+- [The Khronos Group](https://www.khronos.org/) for OpenXR and Vulkan, and
+  [vgmstream](https://github.com/vgmstream/vgmstream) for documenting Sony's audio formats.

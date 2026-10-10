@@ -61,7 +61,7 @@ if (entry.exists() or entry.is_symlink()) and entry.resolve() != app.resolve():
 app.mkdir(parents=True, exist_ok=True)
 if package.resolve() != app.resolve():
     for source in package.iterdir():
-        if source.name not in required + ('README.md', 'README-FRAME.md', 'README-PC-VR.md', 'needed.txt', 'licenses'):
+        if source.name not in required + ('README.md', 'README-FRAME.md', 'needed.txt', 'licenses'):
             continue
         destination = app / source.name
         if source.is_dir():
