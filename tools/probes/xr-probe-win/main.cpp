@@ -10,9 +10,10 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
 #include <windows.h>
-
 #define XR_USE_PLATFORM_WIN32
+#endif
 #define XR_USE_GRAPHICS_API_VULKAN
 #include <vulkan/vulkan.h>
 
@@ -42,6 +43,7 @@ int main() {
     if (const char* json = std::getenv("XR_RUNTIME_JSON")) {
         std::printf("runtime named by XR_RUNTIME_JSON: %s\n", json);
     } else {
+#ifdef _WIN32
         char path[1024]{};
         DWORD size = sizeof(path);
         if (RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Khronos\\OpenXR\\1", "ActiveRuntime",
@@ -50,6 +52,9 @@ int main() {
         } else {
             std::printf("the system has no active OpenXR runtime\n");
         }
+#else
+        std::printf("using the system's active OpenXR runtime\n");
+#endif
     }
 
     uint32_t count = 0;
@@ -73,8 +78,7 @@ int main() {
     std::vector<const char*> extensions;
     for (const char* name :
          {XR_KHR_VULKAN_ENABLE_EXTENSION_NAME, XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME,
-          XR_EXT_HAND_TRACKING_EXTENSION_NAME, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
-          XR_KHR_WIN32_CONVERT_PERFORMANCE_COUNTER_TIME_EXTENSION_NAME}) {
+          XR_EXT_HAND_TRACKING_EXTENSION_NAME, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME}) {
         if (has(name)) {
             extensions.push_back(name);
         }

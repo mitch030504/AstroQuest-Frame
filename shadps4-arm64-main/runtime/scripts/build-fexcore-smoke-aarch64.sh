@@ -18,6 +18,12 @@ FEX_HLE_BRIDGE_SOURCE="${PROJECT_ROOT}/src/core/guest_cpu/fex_hle_bridge.cpp"
 GUEST_HARNESS_SOURCE="${PROJECT_ROOT}/runtime/probes/fexcore-guest-harness.cpp"
 GUEST_HARNESS_VERIFIER="${PROJECT_ROOT}/runtime/tests/verify-fexcore-guest-harness-build.mjs"
 PATCH_APPLIED=0
+# Native ARM64 builds use the SDK's libraries directly; cross builds use the Debian sysroot.
+find_root_args=()
+if [[ $(uname -m) != aarch64 ]]; then
+  find_root_args=(-DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu)
+fi
+strip_tool=$(command -v aarch64-linux-gnu-strip || command -v strip)
 
 cleanup_patch() {
   local status=$?
@@ -83,7 +89,7 @@ cmake -S "${FEX_SOURCE}" -B "${BUILD_DIR}" -G Ninja \
   -DCMAKE_CXX_COMPILER=clang++ \
   -DCMAKE_C_COMPILER_TARGET=aarch64-linux-gnu \
   -DCMAKE_CXX_COMPILER_TARGET=aarch64-linux-gnu \
-  -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu \
+  "${find_root_args[@]}" \
   -DCMAKE_BUILD_TYPE=Release \
   -DTUNE_CPU=none \
   -DCMAKE_INSTALL_PREFIX=/usr \
@@ -115,7 +121,7 @@ cmake --build "${BUILD_DIR}" --target fexcore-smoke fexcore-guest-harness --para
 rm -rf "${STAGE_DIR}"
 mkdir -p "${STAGE_DIR}"
 cmake --install "${BUILD_DIR}" --prefix "${STAGE_DIR}"
-aarch64-linux-gnu-strip "${STAGE_DIR}/bin/fexcore-smoke" "${STAGE_DIR}/bin/fexcore-guest-harness"
+"${strip_tool}" "${STAGE_DIR}/bin/fexcore-smoke" "${STAGE_DIR}/bin/fexcore-guest-harness"
 node "${VERIFIER}" "${STAGE_DIR}/bin/fexcore-smoke"
 node "${GUEST_HARNESS_VERIFIER}" "${STAGE_DIR}/bin/fexcore-guest-harness"
 /bin/mkdir -p "${BUILD_DIR}"

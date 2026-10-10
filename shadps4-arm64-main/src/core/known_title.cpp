@@ -30,7 +30,7 @@ namespace {
 
 using Clock = std::chrono::steady_clock;
 
-// Astro Bot Rescue Mission, CUSA12392. Where things are in each build of it that is known from
+// Astro Bot Rescue Mission, CUSA12392/CUSA12431. Where things are in each known build
 // inside, and how a build is told from the others, is in known_title_builds.h; what follows is
 // the same in all of them.
 using Builds::Build;
@@ -874,7 +874,8 @@ u32 FramePace() {
 }
 
 void Prepare() {
-    if (Common::ElfInfo::Instance().GameSerial() != "CUSA12392") {
+    const auto& serial = Common::ElfInfo::Instance().GameSerial();
+    if (serial != "CUSA12392" && serial != "CUSA12431") {
         return;
     }
     const Larger& larger = GetLarger();
@@ -889,7 +890,8 @@ void Prepare() {
 }
 
 void OnGameLoaded(VAddr base, u64 size) {
-    if (Common::ElfInfo::Instance().GameSerial() != "CUSA12392") {
+    const auto& serial = Common::ElfInfo::Instance().GameSerial();
+    if (serial != "CUSA12392" && serial != "CUSA12431") {
         return;
     }
     // Asked here and nowhere else: this is the one moment at which the image is as its build
@@ -898,13 +900,13 @@ void OnGameLoaded(VAddr base, u64 size) {
     const Build* const build = Builds::Recognise(image);
     if (build == nullptr) {
         LOG_WARNING(Core,
-                    "This build of CUSA12392 is none of those known from inside (its versions "
+                    "This build of {} is none of those known from inside (its versions "
                     "1.00 and 1.04 are): it is left to itself. It then counts time in frames, "
                     "which is slow motion wherever a frame takes longer than a sixtieth of a "
-                    "second, and draws at the console's sizes");
+                    "second, and draws at the console's sizes", serial);
         return;
     }
-    LOG_INFO(Core, "CUSA12392 in a build known from inside: {}", build->name);
+    LOG_INFO(Core, "{} in a build known from inside: {}", serial, build->name);
 
     const Larger& larger = GetLarger();
     if (larger.factor != 1.0) {

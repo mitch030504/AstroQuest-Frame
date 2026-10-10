@@ -13,12 +13,14 @@
 #include <mutex>
 #include <thread>
 
+#ifdef _WIN32
 #include <windows.h>
 
 #include <mmdeviceapi.h>
 #include <objbase.h>
 #include <propidl.h>
 #include <unknwn.h>
+#endif
 
 #include <SDL3/SDL_events.h>
 
@@ -36,7 +38,9 @@
 #include "input/view_turn.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 
+#ifdef _WIN32
 #define XR_USE_PLATFORM_WIN32
+#endif
 #define XR_USE_GRAPHICS_API_VULKAN
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
@@ -56,7 +60,7 @@ constexpr u32 NumCommandBuffers = 4;
 /// Pictures smaller than this, either way, are a title's way of showing nothing.
 constexpr u32 MinFrameSize = 64;
 
-/// What runtimes for Windows are known to want of a Vulkan device they share images with. It is
+/// What runtimes are known to want of a Vulkan device they share images with. It is
 /// enabled whenever a runtime is there, so that a headset that turns up after the renderer has
 /// made its device (the player starts the game first and puts the headset on then) can still be
 /// drawn to; what the runtime itself asks for comes on top once it can be asked.
@@ -69,10 +73,15 @@ constexpr const char* UsualInstanceExtensions[] = {
 constexpr const char* UsualDeviceExtensions[] = {
     "VK_KHR_dedicated_allocation",    "VK_KHR_get_memory_requirements2",
     "VK_KHR_bind_memory2",            "VK_KHR_external_memory",
-    "VK_KHR_external_memory_win32",   "VK_KHR_external_semaphore",
-    "VK_KHR_external_semaphore_win32", "VK_KHR_external_fence",
-    "VK_KHR_external_fence_win32",    "VK_KHR_timeline_semaphore",
-    "VK_KHR_win32_keyed_mutex",       "VK_KHR_image_format_list",
+    "VK_KHR_external_semaphore",     "VK_KHR_external_fence",
+#ifdef _WIN32
+    "VK_KHR_external_memory_win32",   "VK_KHR_external_semaphore_win32",
+    "VK_KHR_external_fence_win32",    "VK_KHR_win32_keyed_mutex",
+#else
+    "VK_KHR_external_memory_fd",      "VK_KHR_external_semaphore_fd",
+    "VK_KHR_external_fence_fd",
+#endif
+    "VK_KHR_timeline_semaphore",     "VK_KHR_image_format_list",
     "VK_KHR_maintenance1",            "VK_KHR_maintenance2",
     "VK_KHR_multiview",               "VK_KHR_create_renderpass2",
 };
@@ -154,6 +163,7 @@ XrVector3f Rotate(const XrQuaternionf& q, const XrVector3f& v) {
     return {rotated.x, rotated.y, rotated.z};
 }
 
+#ifdef _WIN32
 std::string Narrow(const wchar_t* text) {
     const int size = WideCharToMultiByte(CP_UTF8, 0, text, -1, nullptr, 0, nullptr, nullptr);
     if (size <= 1) {
@@ -278,6 +288,8 @@ std::string ActiveAudioDeviceEnding(std::string_view ending, EDataFlow flow) {
     }
     return found;
 }
+
+#endif
 
 } // namespace
 
@@ -418,6 +430,7 @@ struct OpenXrHost::Impl {
     // The headset's own controllers, which stand in for a gamepad where the PC has none, or
     // has one that is not the one in use (see Input::PadSource).
     bool use_controllers{true};
+    bool has_frame_controller{};
     // What of them was in use at the last look (the buttons that play, the sticks).
     u32 controllers_in_use{};
     int pad_hand{1};
@@ -537,7 +550,10 @@ struct OpenXrHost::Impl {
         };
         hand_extension = track_hands && enable_if_offered(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
         has_refresh_rate = enable_if_offered(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+        has_frame_controller = enable_if_offered("XR_VALVE_frame_controller_interaction");
+#ifdef _WIN32
         has_audio_guid = enable_if_offered(XR_OCULUS_AUDIO_DEVICE_GUID_EXTENSION_NAME);
+#endif
 
         XrInstanceCreateInfo info{XR_TYPE_INSTANCE_CREATE_INFO};
         std::strcpy(info.applicationInfo.applicationName, "shadPS4");
@@ -671,6 +687,7 @@ struct OpenXrHost::Impl {
     void FindAudioDevices() {
         std::string output_name;
         std::string input_name;
+#ifdef _WIN32
         if (has_audio_guid) {
             using Function = XrResult(XRAPI_PTR*)(XrInstance, wchar_t*);
             const auto output =
@@ -704,6 +721,7 @@ struct OpenXrHost::Impl {
                 input_name = std::move(microphone);
             }
         }
+#endif
         std::scoped_lock lock{names_mutex};
         if (audio_names_known && output_name == audio_output && input_name == audio_input) {
             return;
@@ -958,7 +976,12 @@ struct OpenXrHost::Impl {
             return;
         }
 
-        for (const bool index : {false, true}) {
+        for (const int profile : {0, 1, 2}) {
+            const bool index = profile == 1;
+            const bool frame = profile == 2;
+            if (frame && !has_frame_controller) {
+                continue;
+            }
             std::vector<XrActionSuggestedBinding> bindings;
             const auto bind = [&](XrAction action, const char* path) {
                 XrPath binding = XR_NULL_PATH;
@@ -970,16 +993,21 @@ struct OpenXrHost::Impl {
             bind(act_finger, "/user/hand/right/input/thumbstick");
             bind(act_finger_press, "/user/hand/right/input/thumbstick/click");
             bind(act_cross, "/user/hand/right/input/a/click");
-            bind(act_square, "/user/hand/right/input/b/click");
+            // Frame's Touch emulation maps B, X and Y to B; use its native profile instead.
+            bind(act_square, frame ? "/user/hand/right/input/x/click"
+                                   : "/user/hand/right/input/b/click");
             bind(act_circle,
-                 index ? "/user/hand/left/input/a/click" : "/user/hand/left/input/x/click");
+                 frame ? "/user/hand/right/input/b/click"
+                       : index ? "/user/hand/left/input/a/click" : "/user/hand/left/input/x/click");
             bind(act_triangle,
-                 index ? "/user/hand/left/input/b/click" : "/user/hand/left/input/y/click");
+                 frame ? "/user/hand/right/input/y/click"
+                       : index ? "/user/hand/left/input/b/click" : "/user/hand/left/input/y/click");
             bind(act_l1, "/user/hand/left/input/squeeze/value");
             bind(act_r1, "/user/hand/right/input/squeeze/value");
             bind(act_l2, "/user/hand/left/input/trigger/value");
             bind(act_r2, "/user/hand/right/input/trigger/value");
-            bind(act_options, index ? "/user/hand/left/input/trackpad/force"
+            bind(act_options, frame ? "/user/hand/left/input/view/click"
+                                   : index ? "/user/hand/left/input/trackpad/force"
                                     : "/user/hand/left/input/menu/click");
             bind(act_l3, "/user/hand/left/input/thumbstick/click");
             bind(act_pose, pad_hand == 0 ? "/user/hand/left/input/aim/pose"
@@ -991,7 +1019,8 @@ struct OpenXrHost::Impl {
             XrInteractionProfileSuggestedBinding suggested{
                 XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
             xrStringToPath(instance,
-                           index ? "/interaction_profiles/valve/index_controller"
+                           frame ? "/interaction_profiles/valve/frame_controller_valve"
+                                 : index ? "/interaction_profiles/valve/index_controller"
                                  : "/interaction_profiles/oculus/touch_controller",
                            &suggested.interactionProfile);
             suggested.countSuggestedBindings = static_cast<uint32_t>(bindings.size());
@@ -999,7 +1028,11 @@ struct OpenXrHost::Impl {
             if (const XrResult result = xrSuggestInteractionProfileBindings(instance, &suggested);
                 XR_FAILED(result)) {
                 LOG_WARNING(Core_Vr, "The headset's runtime takes no {} controller bindings: {}",
-                            index ? "Index" : "Touch", ResultText(instance, result));
+                            frame ? "Frame" : index ? "Index" : "Touch",
+                            ResultText(instance, result));
+            } else if (frame) {
+                LOG_INFO(Core_Vr,
+                         "Steam Frame native bindings: A = cross, B = circle, X = square, Y = triangle");
             }
         }
 
@@ -1156,8 +1189,7 @@ struct OpenXrHost::Impl {
         };
         add(pressed(act_cross) || test_press, Buttons::Cross);
         add(pressed(act_square), Buttons::Square);
-        // The left controller's two buttons together are not circle and triangle: they blow
-        // into the microphone, for as long as they are held (Input::SetBlowing).
+        // Circle and triangle together blow into the microphone (Input::SetBlowing).
         const bool circle = pressed(act_circle);
         const bool triangle = pressed(act_triangle);
         const bool blow = circle && triangle;
@@ -1213,8 +1245,8 @@ struct OpenXrHost::Impl {
             controller->SetHeadsetPlays(true);
             LOG_INFO(Core_Vr,
                      "{}: the headset's controllers stand in for "
-                     "it (left stick to move, right A = cross, right B = square, left X/A = "
-                     "circle, left Y/B = triangle, right stick = finger on the touchpad, "
+                     "it (left stick to move, face buttons follow the controller profile, "
+                     "right stick = finger on the touchpad, "
                      "pressed in = touchpad pressed, left menu/trackpad = OPTIONS, "
                      "both sticks pressed in = reset the view; the {} "
                      "one is the controller in the game: its trigger presses the touchpad, its "
@@ -1224,6 +1256,11 @@ struct OpenXrHost::Impl {
                                "not (it plays again when it is used)"
                              : "No gamepad is connected to the PC",
                      pad_hand == 0 ? "left" : "right");
+            if (has_frame_controller) {
+                LOG_INFO(Core_Vr,
+                         "On Steam Frame, use right A = cross, B = circle, X = square, "
+                         "Y = triangle; B + Y = blow");
+            }
         }
 
         // Both sticks pressed in is not something a game is played with: it resets the view,

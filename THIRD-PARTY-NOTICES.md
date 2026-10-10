@@ -42,6 +42,18 @@ whose notice (`shadps4-arm64-main/NOTICE.android-runtime.md`) and lock files
 The emulator needs the Microsoft Visual C++ runtime, which is not included: it comes with the
 [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
+## Steam Frame build (`AstroQuest-SteamFrame-ARM64.tar.gz`)
+
+The emulator, FEXCore and bundled dependencies use the same source and licenses
+listed above. The Khronos OpenXR loader is built into the emulator. Steam Linux
+Runtime 4 and the headset's Vulkan driver are provided by SteamOS and are not
+distributed in this archive. Game and PS4 firmware files are not included.
+Dependency license and notice files are included under `licenses/` in the archive.
+The corresponding source is the release tag in
+[mitch030504/AstroQuest](https://github.com/mitch030504/AstroQuest), with the exact
+dependency revisions in `.gitmodules` and `runtime/locks/components.lock.json`
+under `shadps4-arm64-main/`. Build using `tools/build-frame.sh`.
+
 ## Source of the GPL and LGPL parts
 
 The source of AstroQuest itself is this repository, at the tag of each release. For the GPL

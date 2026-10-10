@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <bit>
 #include <cstdlib>
-#ifdef ENABLE_BACHATA_RUNTIME
+#ifdef __linux__
 #include <unistd.h>
 #endif
 #include <boost/container/static_vector.hpp>
@@ -766,6 +766,8 @@ void Instance::CreateAllocator() {
         // The default block is a quarter of a gigabyte, which the kernel drivers of phones and
         // headsets back with real pages whether anything has been placed in it or not.
         .preferredLargeHeapBlockSize = 32ULL << 20,
+#else
+        .preferredLargeHeapBlockSize = driver_id == vk::DriverId::eMesaTurnip ? 32ULL << 20 : 0,
 #endif
         .pVulkanFunctions = &functions,
         .instance = *instance,
@@ -844,7 +846,12 @@ void Instance::CollectPhysicalMemoryInfo() {
     const s64 available_memory = static_cast<s64>(total_memory_budget - device_initial_usage);
     total_memory_budget =
         static_cast<u64>(std::max<s64>(available_memory - 8_GB, static_cast<s64>(local_memory)));
-#ifdef ENABLE_BACHATA_RUNTIME
+#ifdef __linux__
+#ifndef ENABLE_BACHATA_RUNTIME
+    if (driver_id != vk::DriverId::eMesaTurnip) {
+        return;
+    }
+#endif
     // A phone or headset: the "heap" the driver reports is most of the system's memory, which
     // the guest's own memory, the system and everything else running have to fit into as well.
     // A quarter of what the machine has is what the GPU caches may plan with.

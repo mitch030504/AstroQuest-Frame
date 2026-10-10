@@ -45,9 +45,8 @@ constexpr VAddr USER_MIN = 0x7000000000ULL;
 constexpr VAddr SYSTEM_RESERVED_MAX = 0xFFFFFFFFFULL;
 constexpr VAddr USER_MIN = 0x1000000000ULL;
 #endif
-#if defined(ENABLE_BACHATA_RUNTIME)
-// Android devices commonly expose a 39-bit userspace. Keep the managed guest range below
-// native mappings near the top of that space; compact titles use addresses inside this range.
+#if defined(ENABLE_BACHATA_RUNTIME) || defined(SHADPS4_ENABLE_FEX_GUEST_CPU)
+// Keep FEX guest addresses fixed below native mappings in a compact 256 GB range.
 constexpr VAddr USER_MAX = 0x3FFFFFFFFFULL;
 #elif defined(__linux__)
 // Linux maps the shadPS4 executable around here, so limit the user maximum
@@ -648,7 +647,7 @@ struct AddressSpace::Impl {
         map_flags |= MAP_NORESERVE;
 #endif
 
-#if defined(ENABLE_BACHATA_RUNTIME)
+#if defined(ENABLE_BACHATA_RUNTIME) || defined(SHADPS4_ENABLE_FEX_GUEST_CPU)
         std::vector<std::pair<VAddr, VAddr>> occupied_ranges;
         std::ifstream process_maps{"/proc/self/maps"};
         for (std::string line; std::getline(process_maps, line);) {
@@ -743,7 +742,7 @@ struct AddressSpace::Impl {
         m_free_regions.insert({system_managed_addr, system_managed_addr + system_managed_size});
         m_free_regions.insert({system_reserved_addr, system_reserved_addr + system_reserved_size});
         m_free_regions.insert({user_addr, user_addr + user_size});
-#ifdef ENABLE_BACHATA_RUNTIME
+#if defined(ENABLE_BACHATA_RUNTIME) || defined(SHADPS4_ENABLE_FEX_GUEST_CPU)
         for (const auto [mapped_begin, mapped_end] : occupied_ranges) {
             const VAddr begin = std::max(mapped_begin, SYSTEM_MANAGED_MIN);
             const VAddr end = std::min(mapped_end, USER_MAX + 1);
@@ -762,7 +761,7 @@ struct AddressSpace::Impl {
         }
         shm_unlink(shm_path.c_str());
 #else
-#if !defined(__FreeBSD__) && !defined(ENABLE_BACHATA_RUNTIME)
+#if !defined(__FreeBSD__) && !defined(ENABLE_BACHATA_RUNTIME) && !defined(SHADPS4_ENABLE_FEX_GUEST_CPU)
         madvise(virtual_base, virtual_size, MADV_HUGEPAGE);
 #endif
         // NOTE: If you add MFD_HUGETLB or whatever, remember that FBSD will break (libc bug)

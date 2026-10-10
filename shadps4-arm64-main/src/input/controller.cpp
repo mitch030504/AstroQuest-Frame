@@ -555,6 +555,15 @@ void GameControllers::TryOpenSDLControllers() {
     static std::unordered_set<SDL_JoystickID> left_unused;
     for (int j = 0; j < controller_count; j++) {
         SDL_JoystickID id = new_joysticks[j];
+#ifdef ENABLE_OPENXR_HOST
+        // Steam's virtual gamepad bypasses SDL's device filter and duplicates OpenXR input.
+        if (Core::Vr::Runtime::Instance().IsHeadsetConnected() &&
+            SDL_GetGamepadVendorForID(id) == 0x28de && SDL_GetGamepadProductForID(id) == 0x11e0) {
+            LOG_INFO(Input,
+                     "Steam Frame controllers use OpenXR; their duplicate SDL gamepad is not used");
+            continue;
+        }
+#endif
         if (assigned_ids.contains(id))
             continue;
         if (one_player && (slot_taken[0] || controllers[0]->m_sdl_gamepad != nullptr)) {

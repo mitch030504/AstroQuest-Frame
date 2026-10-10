@@ -286,6 +286,7 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::vector<u8> image = Load(argv[i]);
         const Build* build = image.empty() ? nullptr : Recognise(image);
+        Check(build != nullptr, std::string{"recognised supplied executable: "} + argv[i]);
         std::printf("%s: %s\n", argv[i],
                     image.empty() ? "not a plain ELF"
                                   : build != nullptr ? build->name : "no build that is known");

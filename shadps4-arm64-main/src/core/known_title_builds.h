@@ -10,7 +10,7 @@
 
 #include "common/types.h"
 
-/// Where things are in the builds of ASTRO BOT Rescue Mission (CUSA12392) that are known from
+/// Where things are in the builds of ASTRO BOT Rescue Mission (CUSA12392/CUSA12431) known from
 /// inside, and how a build is told from every other. Kept apart from what is done with it
 /// (known_title.cpp) so that it can be tried without an emulator around it
 /// (tools/tests/known_title_builds_test.cpp).
@@ -18,6 +18,7 @@
 /// The game's updates moved its code and data about, each part by an amount of its own: every
 /// address below was found in the build it is given for, none is worked out from another's.
 /// (Those of the update 1.04 were found and tried by Clodo76, issue #1.)
+/// The US 1.00 and 1.04 executables were checked against these same byte signatures.
 namespace Core::KnownTitle::Builds {
 
 constexpr s32 FirstHeadsetLevel = 3;
