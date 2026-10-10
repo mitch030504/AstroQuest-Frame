@@ -1,5 +1,10 @@
 # Astro Bot Rescue Mission on Meta Quest 3 — what is in this folder
 
+This is the inherited **Meta Quest Android** reference and development history.
+For AstroQuest-Frame's SteamOS build, use [README.md](README.md) and
+[README-FRAME.md](README-FRAME.md). Quest builds have not been rebuilt or checked
+for the Frame releases; the Android paths and Touch layout below are platform specific.
+
 This folder holds a work-in-progress port of the `shadps4-arm64` PS4 emulator core to immersive VR
 on Meta Quest, built around one game: ASTRO BOT Rescue Mission (CUSA12392).
 

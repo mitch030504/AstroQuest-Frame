@@ -1,14 +1,209 @@
-# AstroQuest-Frame
+# AstroQuest-Frame setup and build guide
 
-Native ARM64 Linux emulator with embedded FEXCore translating the PS4 game's CPU
-instructions, Vulkan rendering and the headset's SteamVR OpenXR runtime.
-Supply your own dumped game; no game or PS4 firmware files are included.
-US release CUSA12431 versions 1.00 and 1.04 match the existing European build
-signatures and use the same guarded timing, resolution and physics fixes.
+Native ARM64 Linux build of AstroQuest for Steam Frame, using embedded FEXCore,
+Vulkan and the headset's SteamVR OpenXR runtime. For a quick start and the current
+validation status, see [README.md](README.md).
 
-## Build
+## Requirements
 
-On the Frame, clone this repository with submodules and run:
+- Steam Frame with SteamVR running as the active OpenXR runtime.
+- **Steam Linux Runtime 4.0 ARM64**, installed in Steam. The launcher expects it at
+  `~/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4-arm64/run`.
+- SteamVR support for `XR_VALVE_frame_controller_interaction` for the native Frame
+  buttons. SteamVR/OpenXR 2.18.2 was used on the device during this port.
+- Your own extracted game dump. No game files, firmware or keys are included.
+
+The tested launch uses **US CUSA12431**. Its 1.00 and 1.04 executables match the
+existing European signatures and use the same guarded timing, resolution and
+physics fixes. European CUSA12392 support is inherited and unverified on Frame;
+pass its folder explicitly to the launcher. Other builds are unverified.
+
+## Install
+
+Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
+[the v0.1.1 release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
+In the directory containing both downloads:
+
+```sh
+sha256sum -c SHA256SUMS.txt
+mkdir -p ~/Applications
+tar -xzf AstroQuest-SteamFrame-ARM64.tar.gz -C ~/Applications
+```
+
+The installed launcher is `~/Applications/astroquest-frame/launch.sh`.
+
+## Prepare the game
+
+Put the extracted US base game in `~/Games/AstroQuest/CUSA12431`. If you have the
+1.04 update, extract it into the sibling `CUSA12431-UPDATE` directory. Each folder
+needs its own `sce_sys/param.sfo`; the update alone cannot replace the base game.
+The launcher still points at the base game's `eboot.bin` and the emulator loads
+its sibling update.
+
+```text
+~/Games/AstroQuest/
+├── CUSA12431/
+│   ├── eboot.bin
+│   ├── sce_sys/param.sfo
+│   └── ...remaining base-game files
+└── CUSA12431-UPDATE/          # optional
+    ├── sce_sys/param.sfo
+    └── ...extracted update files
+```
+
+The launcher accepts an extracted folder, not a PKG file. For a package made from
+your own dump, you can use the upstream Windows PC launcher's extractor with its
+bundled runtime, then copy the extracted folders to Frame.
+
+### Linux PKG extraction caveat
+
+Running the old PkgTool with `DOTNET_ROLL_FORWARD` under a newer .NET runtime
+produced incomplete decompressed blocks during this port: the game could pass the
+title screen and then fail while loading the opening scene.
+
+For the LibOrbisPkg source build targeting .NET 10 used to repair that extraction,
+the call in `LibOrbisPkg/PFS/PFSCReader.cs` must read the entire output buffer:
+
+```csharp
+ds.ReadExactly(output, 0, hdr.BlockSz);
+```
+
+Re-extract both the base and update after fixing the extractor. The game's
+`param.sfo` is a separate package entry and must also be extracted into `sce_sys`.
+PkgTool and game files are not included in the Frame archive.
+
+## Launch in VR
+
+1. Add `~/Applications/astroquest-frame/launch.sh` as a non-Steam game.
+2. Name the shortcut **AstroQuest-Frame** and enable **Include in VR Library** in
+   its Properties.
+3. Start SteamVR, launch the shortcut from the headset library, and close the
+   Steam dashboard so the OpenXR session receives input.
+
+To launch from a terminal, or use a game stored elsewhere:
+
+```sh
+~/Applications/astroquest-frame/launch.sh
+~/Applications/astroquest-frame/launch.sh /path/to/CUSA12431
+```
+
+The launcher invokes Steam Linux Runtime 4 ARM64 and uses the active OpenXR
+runtime and system Vulkan driver. Proton is not required. Extra emulator
+arguments may follow the game folder.
+
+## Controls
+
+These are the native Frame bindings in v0.1.1, with the default right controller
+supplying the virtual controller's position and orientation:
+
+| Frame input | PS4 input / behavior |
+| --- | --- |
+| Right A | Cross — jump / confirm |
+| Right B | Circle |
+| Right X | Square — attack |
+| Right Y | Triangle |
+| Left D-pad | PS4 Up / Down / Left / Right |
+| Left stick | Move |
+| Left stick pressed | L3 |
+| Right stick moved | Move a finger on the PS4 touchpad |
+| Right stick pressed | Touchpad click |
+| Left View | Options; hold for about a second to recenter |
+| Both sticks pressed together | Recenter |
+| Left grip held + right stick flicked sideways | Turn the view, normally 30 degrees per flick |
+| B + Y held together | Simulate blowing; the combined press is consumed by this gesture |
+| Left / right trigger | L2 / R2, plus the gadget gestures below |
+| Left / right grip | L1 / R1, plus the gadget gestures below |
+
+The right stick's touchpad input can appear inactive before a gadget needs it.
+Turning with the left-grip gesture temporarily takes over from touchpad movement.
+The D-pad sends ordinary PS4 D-pad input; its visible effect depends on the screen.
+
+The existing gadget gestures, with the default controller hand, are:
+
+| Input | Touchpad gesture / intended use |
+| --- | --- |
+| Right trigger held | Press and hold — water cannon / machine gun |
+| Right grip pressed | Swipe forward — hook / throwing stars / chests |
+| Left trigger pulled, then released | Pull back and release — catapult |
+
+Gadget behavior and microphone input remain unverified on Frame. Audio and
+microphone use the system default devices. Separate SDL gamepads, including
+DualSense, retain the existing input path but are also unverified on Frame.
+
+The native profile avoids SteamVR's automatic Touch conversion, which mapped
+Frame B, X and Y to Square. During VR, the emulator filters out the Frame
+controllers' duplicate SDL gamepad (`28de:11e0`) so OpenXR controls their buttons
+and tracked pose together. Restart an older running build to load these bindings.
+
+## Settings
+
+Set environment variables before launching, or use Steam launch options of the
+form `NAME=value %command%`. The defaults below refer to `tools/launch-frame.sh`.
+
+| Setting | Behavior |
+| --- | --- |
+| `SHADPS4_TITLE_RESOLUTION=3` | Default scene resolution, 816×870 per eye |
+| `SHADPS4_TITLE_RESOLUTION=4` | 960×1080 per eye |
+| `SHADPS4_TITLE_RESOLUTION=5` | 1200×1280 per eye |
+| `SHADPS4_TITLE_RESOLUTION=6` | 1440×1536 per eye |
+| `SHADPS4_MAX_MSAA=1` | Default maximum of one MSAA sample |
+| `SHADPS4_FLUSH_DRAWS=64` | Default GPU command flush interval |
+| `SHADPS4_XR_WAIT=30` | Default wait, in seconds, for a headset |
+| `SHADPS4_VR_TURN=30` | Default turn step in degrees; `0` disables stick turning |
+
+For example:
+
+```sh
+SHADPS4_TITLE_RESOLUTION=4 ~/Applications/astroquest-frame/launch.sh
+```
+
+The inherited pacing code defaults to `SHADPS4_VR_PACE=1`, targeting one rendered
+frame per headset refresh. The launcher's `SHADPS4_VR_FPS_CAP=60` default does not
+override that fixed pace. To select the governor and apply its FPS cap, use
+`SHADPS4_VR_PACE=0` together with `SHADPS4_VR_FPS_CAP=60`. Available frame rates are
+quantized to the headset refresh rate; performance still depends on scene load.
+
+The Windows `pc-vr/settings.txt` and Android `vrhost.txt` files are not read by the
+Frame launcher. [README-PC-VR.md](README-PC-VR.md) has additional inherited OpenXR
+settings; use their environment variables for this build.
+
+## Saves, updates and logs
+
+| Location | Contents |
+| --- | --- |
+| `~/Applications/astroquest-frame/` | Installed application, launcher and documentation |
+| `~/.local/share/astroquest/user/` | Saves, configuration and shader cache |
+| `~/.local/share/astroquest/user/sys_modules/` | Your PS4 firmware modules, if needed |
+| `~/.local/share/astroquest/logs/console.log` | Appended console output |
+| `~/.local/share/astroquest/user/log/shad_log.txt` | Emulator log |
+
+If `XDG_DATA_HOME` is set, the data and logs use `$XDG_DATA_HOME/astroquest`.
+Extract a newer archive into the same application directory and restart the game.
+Replacing the application preserves the separate save directory.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| Launcher prints its usage and exits | Pass an extracted game folder containing `eboot.bin` and `sce_sys/param.sfo` |
+| Launcher asks for the ARM64 runtime | Install Steam Linux Runtime 4.0 ARM64 at the path in Requirements |
+| Flat window or black headset view | Start SteamVR, check the active OpenXR runtime, enable Include in VR Library, and inspect the console log |
+| Controllers do not respond | Close the Steam dashboard and give the game focus |
+| B, X and Y all act as Square | Restart with v0.1.1 and check for `Steam Frame native bindings` in the log; the runtime must offer the Frame extension |
+| D-pad does not respond | Restart with v0.1.1; check in a screen that uses the D-pad |
+| Right stick appears inactive | It supplies touchpad input; try it when a gadget uses the touchpad, or hold the left grip to turn the view |
+| Game fails after the title while loading | Check that both game folders were extracted completely; see the Linux PKG caveat above |
+
+When reporting an issue, include the release version, SteamVR version, game serial
+and version, the scene where it occurs, and the relevant log excerpt. A full game
+playthrough, latest Circle/D-pad gameplay checks, gadgets, microphone and separate
+gamepads are still outstanding.
+
+## Build from source
+
+Run on Steam Frame or an ARM64 Linux host with Git and rootless Podman available.
+The first build needs network access for the SDK image, dependencies and locked
+FEX checkout:
 
 ```sh
 git clone --recurse-submodules https://github.com/mitch030504/AstroQuest-Frame.git
@@ -16,69 +211,19 @@ cd AstroQuest-Frame
 bash tools/build-frame.sh
 ```
 
-The script builds inside a dedicated rootless Podman container using Valve's ARM64
-Steam Runtime 4 SDK, pinned to `4.0.20260805.254769`. Packages are installed inside
-that container. Compilation uses two jobs. Output is
-`build/AstroQuest-SteamFrame-ARM64.tar.gz`.
+The script uses the dedicated Podman container `astroquest-build`, with Valve's
+ARM64 Steam Runtime 4 SDK pinned to `4.0.20260805.254769`. Packages are installed
+inside that container. Keep the clone at the same path when reusing its container.
+The emulator compilation uses two jobs; the FEX build uses its existing script.
+The build also runs the FEX smoke/harness checks and checks ARM64 output and
+runtime library resolution.
 
-## Install and run
+Output is `build/AstroQuest-SteamFrame-ARM64.tar.gz`; its staging directory is
+`build/astroquest-frame/`. Install that archive as described above. The script does
+not install the app or add a Steam shortcut automatically.
 
-Download `AstroQuest-SteamFrame-ARM64.tar.gz` from
-[the release page](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
-Install **Steam Linux Runtime 4.0 ARM64** in Steam before launching.
-
-Extract the archive into `~/Applications`. Put the extracted US game in
-`~/Games/AstroQuest/CUSA12431`, with update files in the sibling
-`CUSA12431-UPDATE` directory. Both need `sce_sys/param.sfo`.
-
-Use the PC launcher’s PKG extractor with its bundled runtime. Do not run the old
-PkgTool under a newer .NET runtime using `DOTNET_ROLL_FORWARD`: its single
-`DeflateStream.Read` leaves compressed blocks partly filled with zeroes. For a
-source build targeting .NET 10, change that call in `PFS/PFSCReader.cs` to
-`ds.ReadExactly(output, 0, hdr.BlockSz)` before extracting.
+The container stays running after the script finishes. To stop it after building:
 
 ```sh
-~/Applications/astroquest-frame/launch.sh
-# Or pass the location of your extracted game:
-~/Applications/astroquest-frame/launch.sh /path/to/CUSA12431
+podman stop astroquest-build
 ```
-
-Add `launch.sh` as a non-Steam game for launching from the headset's library.
-In the shortcut’s Properties, enable **Include in VR Library**. Close the Steam
-dashboard to give the OpenXR session focus.
-The launcher invokes the installed Steam Linux Runtime 4 ARM64 and uses the active
-OpenXR runtime and system Vulkan driver. SteamVR must be running.
-
-Saves, configuration and shader cache are under
-`~/.local/share/astroquest/user`; console output is in
-`~/.local/share/astroquest/logs/console.log`. Replacing the application keeps them.
-PS4 firmware modules, if needed, go in `user/sys_modules`.
-
-Frame controllers use the native Steam Frame OpenXR profile: left stick moves,
-right stick controls the touchpad, and the right controller's A/B/X/Y buttons are
-Cross/Circle/Square/Triangle respectively. A jumps and X attacks. Hold B + Y to
-blow without a microphone. SteamVR's automatic Touch conversion maps B/X/Y to
-the same button, so it must support `XR_VALVE_frame_controller_interaction`.
-Triggers and grips provide the existing gadget gestures. Press the left View
-button for OPTIONS, or press both sticks together to recenter. The right
-controller supplies the controller's tracked pose.
-The left D-pad maps to the PS4 D-pad. The right stick has no normal camera-turn
-binding: it moves a finger on the touchpad for gadgets, and pressing it clicks
-the touchpad. Hold the left grip and flick the right stick sideways to turn the
-view in steps.
-SDL gamepads, including DualSense, remain supported. Audio and microphone use
-the system defaults.
-While VR is active, the emulator filters out the Frame controllers' duplicate SDL gamepad
-(`28de:11e0`) so their buttons and tracked pose come through OpenXR together.
-
-The initial scene resolution is 816×870 per eye, with MSAA capped at one sample
-and GPU commands flushed every 64 draws, matching the existing mobile defaults.
-Set `SHADPS4_TITLE_RESOLUTION=4`, `5`
-or `6` before launching to select 960×1080, 1200×1280 or 1440×1536. The existing
-VR settings documented in README-PC-VR.md also apply.
-
-## Status
-
-Experimental: stereo VR launch, head/controller tracking and opening gameplay were
-checked on Steam Frame with SteamVR/OpenXR 2.18.2. Full gameplay, gadgets,
-microphone and separate gamepads remain unverified.

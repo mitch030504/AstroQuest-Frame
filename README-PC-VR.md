@@ -1,5 +1,10 @@
 # Astro Bot Rescue Mission on PC VR
 
+This is the inherited **Windows PC VR** reference. For AstroQuest-Frame's native
+ARM64 Linux release, installation and controller layout, use [README.md](README.md)
+and [README-FRAME.md](README-FRAME.md). PC results below are upstream reports;
+Windows builds have not been rebuilt or checked for the Frame releases.
+
 ## Valve Index through SteamVR
 
 Use the same Windows PC build and **Play Astro Bot VR.bat** with a Valve Index. You do
@@ -622,7 +627,9 @@ Reports from the project's thread on Reddit and from the comments under the vide
 
 ## Linux, through Proton, as reported
 
-There is no Linux build of the PC version, and none of this has been tried here. A player
+This section describes the Windows x64 build through Proton; this configuration
+has not been checked for the Frame releases. The native ARM64 Linux build is
+documented in [README-FRAME.md](README-FRAME.md). A player
 (klejmanm, on Reddit) reports the Windows build running on Arch and Mint with Radeon RX
 6000/7000 cards, shown in a Quest through WiVRn, when it is started by Steam and not by a
 script of one's own (Wine's OpenXR layer got in the way otherwise):
