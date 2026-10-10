@@ -50,7 +50,7 @@ Runtime 4 and the headset's Vulkan driver are provided by SteamOS and are not
 distributed in this archive. Game and PS4 firmware files are not included.
 Dependency license and notice files are included under `licenses/` in the archive.
 The corresponding source is the release tag in
-[mitch030504/AstroQuest](https://github.com/mitch030504/AstroQuest), with the exact
+[mitch030504/AstroQuest-Frame](https://github.com/mitch030504/AstroQuest-Frame), with the exact
 dependency revisions in `.gitmodules` and `runtime/locks/components.lock.json`
 under `shadps4-arm64-main/`. Build using `tools/build-frame.sh`.
 

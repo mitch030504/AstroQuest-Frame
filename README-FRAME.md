@@ -1,4 +1,4 @@
-# AstroQuest on Steam Frame
+# AstroQuest-Frame
 
 Native ARM64 Linux emulator with embedded FEXCore translating the PS4 game's CPU
 instructions, Vulkan rendering and the headset's SteamVR OpenXR runtime.
@@ -11,8 +11,8 @@ signatures and use the same guarded timing, resolution and physics fixes.
 On the Frame, clone this repository with submodules and run:
 
 ```sh
-git clone --recurse-submodules https://github.com/mitch030504/AstroQuest.git
-cd AstroQuest
+git clone --recurse-submodules https://github.com/mitch030504/AstroQuest-Frame.git
+cd AstroQuest-Frame
 bash tools/build-frame.sh
 ```
 
@@ -24,7 +24,7 @@ that container. Compilation uses two jobs. Output is
 ## Install and run
 
 Download `AstroQuest-SteamFrame-ARM64.tar.gz` from
-[the release page](https://github.com/mitch030504/AstroQuest/releases/tag/steam-frame-v0.1.1).
+[the release page](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
 Install **Steam Linux Runtime 4.0 ARM64** in Steam before launching.
 
 Extract the archive into `~/Applications`. Put the extracted US game in

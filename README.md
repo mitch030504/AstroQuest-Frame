@@ -1,10 +1,10 @@
-# AstroQuest
+# AstroQuest-Frame
 
 ## Steam Frame fork
 
 This fork adds an experimental native ARM64 Linux build for standalone Steam Frame,
 with Vulkan rendering, SteamVR OpenXR and native Frame controller bindings.
-[Download the Steam Frame release](https://github.com/mitch030504/AstroQuest/releases/tag/steam-frame-v0.1.1)
+[Download the Steam Frame release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1)
 and follow [the install and build guide](README-FRAME.md).
 
 Based on [evertec82/AstroQuest](https://github.com/evertec82/AstroQuest), which builds on
