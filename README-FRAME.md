@@ -6,8 +6,8 @@ validation status, see [README.md](README.md).
 
 ## Requirements
 
-- Steam Frame with SteamVR running as the active OpenXR runtime.
-- **Steam Linux Runtime 4.0 ARM64**, installed in Steam. The launcher expects it at
+- Steam Frame with its built-in SteamVR/OpenXR runtime.
+- **Steam Linux Runtime 4.0 - Arm64**, installed on the Frame in Steam. The launcher expects it at
   `~/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4-arm64/run`.
 - SteamVR support for `XR_VALVE_frame_controller_interaction` for the native Frame
   buttons. SteamVR/OpenXR 2.18.2 was used on the device during this port.
@@ -20,13 +20,24 @@ pass its folder explicitly to the launcher. Other builds are unverified.
 
 ## Install
 
-Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
-[the v0.1.1 release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
-In the directory containing both downloads:
+Run these commands **on the Frame**, in its terminal or through SSH. For remote
+access, see [Valve's developer-mode setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup#developer-mode).
+
+Open the runtime's installation dialog on the Frame and complete the installation
+of **Steam Linux Runtime 4.0 - Arm64** in Steam:
 
 ```sh
-sha256sum -c SHA256SUMS.txt
-mkdir -p ~/Applications
+steam steam://install/4185400
+```
+
+Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
+[the v0.1.1 release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
+Copy both files to the Frame. In the directory containing both downloads on the
+Frame, verify and extract them:
+
+```sh
+sha256sum -c SHA256SUMS.txt && \
+mkdir -p ~/Applications && \
 tar -xzf AstroQuest-SteamFrame-ARM64.tar.gz -C ~/Applications
 ```
 
@@ -74,11 +85,24 @@ PkgTool and game files are not included in the Frame archive.
 
 ## Launch in VR
 
-1. Add `~/Applications/astroquest-frame/launch.sh` as a non-Steam game.
-2. Name the shortcut **AstroQuest-Frame** and enable **Include in VR Library** in
-   its Properties.
-3. Start SteamVR, launch the shortcut from the headset library, and close the
-   Steam dashboard so the OpenXR session receives input.
+In the Frame's desktop Steam client (for example accessed over RDP), choose
+**Games > Add a Non-Steam Game > Browse** and select `launch.sh`. Set these fields
+in the shortcut's Properties:
+
+| Field | Value |
+| --- | --- |
+| Name | `AstroQuest-Frame` |
+| Target | `"/home/steamos/Applications/astroquest-frame/launch.sh"` |
+| Start In | `"/home/steamos/Applications/astroquest-frame"` |
+| Include in VR Library | Enabled |
+
+Leave Launch Options empty for the default game location. For a different
+extracted game folder, set Launch Options to its quoted full path, e.g.
+`"/home/steamos/Games/MyDump/CUSA12431"`. The launcher treats that first argument
+as the game folder.
+
+Launch the shortcut from the headset library. It uses the Frame's built-in VR
+runtime. Close the Steam dashboard so the OpenXR session receives input.
 
 To launch from a terminal, or use a game stored elsewhere:
 
@@ -187,7 +211,7 @@ Replacing the application preserves the separate save directory.
 | --- | --- |
 | Launcher prints its usage and exits | Pass an extracted game folder containing `eboot.bin` and `sce_sys/param.sfo` |
 | Launcher asks for the ARM64 runtime | Install Steam Linux Runtime 4.0 ARM64 at the path in Requirements |
-| Flat window or black headset view | Start SteamVR, check the active OpenXR runtime, enable Include in VR Library, and inspect the console log |
+| Flat window or black headset view | Enable Include in VR Library on the Frame's shortcut, check that its built-in VR runtime is running, and inspect the console log |
 | Controllers do not respond | Close the Steam dashboard and give the game focus |
 | B, X and Y all act as Square | Restart with v0.1.1 and check for `Steam Frame native bindings` in the log; the runtime must offer the Frame extension |
 | D-pad does not respond | Restart with v0.1.1; check in a screen that uses the D-pad |

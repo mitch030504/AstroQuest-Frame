@@ -29,9 +29,8 @@ Windows and Quest builds have not been rebuilt or checked for these releases.
 
 ## What you need
 
-- A Steam Frame running SteamOS, with SteamVR running and selected as the active
-  OpenXR runtime.
-- **Steam Linux Runtime 4.0 ARM64**, installed through Steam. The launcher uses
+- A Steam Frame running SteamOS and its built-in SteamVR/OpenXR runtime.
+- **Steam Linux Runtime 4.0 - Arm64**, installed on the Frame through Steam. The launcher uses
   its installed runtime; the release does not bundle it.
 - SteamVR support for `XR_VALVE_frame_controller_interaction`. The device used
   for this port runs SteamVR/OpenXR 2.18.2.
@@ -45,25 +44,38 @@ from AstroQuest; it has not been checked on Frame. Other builds are unverified.
 
 ## Install and launch
 
-1. Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
+Run these commands **on the Frame**, in its terminal or through SSH. See
+[Valve's developer-mode setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup#developer-mode)
+if you need remote access.
+
+1. Open the ARM64 runtime's installation dialog on the Frame:
+
+   ```sh
+   steam steam://install/4185400
+   ```
+
+   Finish installing **Steam Linux Runtime 4.0 - Arm64** in Steam.
+2. Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
    [v0.1.1](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
    In the directory containing both downloads, run:
 
    ```sh
-   sha256sum -c SHA256SUMS.txt
-   mkdir -p ~/Applications
+   sha256sum -c SHA256SUMS.txt && \
+   mkdir -p ~/Applications && \
    tar -xzf AstroQuest-SteamFrame-ARM64.tar.gz -C ~/Applications
    ```
 
-2. Put the extracted US base game in `~/Games/AstroQuest/CUSA12431`. If you have
+3. Put the extracted US base game in `~/Games/AstroQuest/CUSA12431`. If you have
    update 1.04, put its extracted files in the sibling `CUSA12431-UPDATE` folder.
    Both folders need their own `sce_sys/param.sfo`. The update alone is not the
    base game. See [game preparation](README-FRAME.md#prepare-the-game) for the
    Linux PKG extraction caveat.
-3. Add `~/Applications/astroquest-frame/launch.sh` as a non-Steam game. Name the
+4. In the Frame's desktop Steam client (for example over RDP), add
+   `/home/steamos/Applications/astroquest-frame/launch.sh` as a non-Steam game. Name the
    shortcut **AstroQuest-Frame** and enable **Include in VR Library** in its
-   Properties. Launch it from the headset library and close the Steam dashboard
-   to give the game focus.
+   Properties. Use the [exact shortcut fields](README-FRAME.md#launch-in-vr).
+   Launch it from the headset library and close the Steam dashboard to give the
+   game focus.
 
 To use a game stored elsewhere, pass its extracted folder to the launcher:
 
