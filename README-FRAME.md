@@ -20,28 +20,43 @@ pass its folder explicitly to the launcher. Other builds are unverified.
 
 ## Install
 
-Run these commands **on the Frame**, in its terminal or through SSH. For remote
-access, see [Valve's developer-mode setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup#developer-mode).
-
-Open the runtime's installation dialog on the Frame and complete the installation
-of **Steam Linux Runtime 4.0 - Arm64** in Steam:
-
-```sh
-steam steam://install/4185400
-```
-
-Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
-[the v0.1.1 release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
-Copy both files to the Frame. In the directory containing both downloads on the
-Frame, verify and extract them:
+Download the ARM64 archive and `SHA256SUMS.txt` from
+[the v0.1.2 release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.2).
+Put both files in a folder on the Frame, then run these commands **on the Frame**,
+using a terminal or SSH as your normal Steam user:
 
 ```sh
 sha256sum -c SHA256SUMS.txt && \
-mkdir -p ~/Applications && \
-tar -xzf AstroQuest-SteamFrame-ARM64.tar.gz -C ~/Applications
+tar -xzf AstroQuest-SteamFrame-ARM64.tar.gz && \
+bash astroquest-frame/install.sh
 ```
 
-The installed launcher is `~/Applications/astroquest-frame/launch.sh`.
+For SSH access, see [Valve's developer-mode setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup#developer-mode).
+Run the installer without `sudo`.
+
+The installer:
+
+- Checks the ARM64 package and that Steam is running.
+- Opens the installation dialog for Steam Linux Runtime 4.0 - Arm64 if it is
+  missing. Finish that download in the headset, then rerun the installer.
+- Copies the application into `~/Applications/astroquest-frame`.
+- Registers **Devkit Game: AstroQuest_Frame** through Steam's devkit interface
+  and confirms that Steam lists the shortcut.
+
+The installer uses the devkit helpers supplied on the Frame. It creates
+`~/devkit-game/AstroQuest_Frame` as a link to the app,
+with the shortcut's configuration alongside it. Repeating the installation
+updates the same devkit title. Existing saves remain in the separate data directory.
+
+To choose a game folder, pass it to the installer:
+
+```sh
+bash astroquest-frame/install.sh /path/to/CUSA12431
+```
+
+The folder must contain `eboot.bin` and `sce_sys/param.sfo`. Rerunning without an
+argument preserves the saved location; a new install uses the default US path.
+Game files are prepared separately, as described below.
 
 ## Prepare the game
 
@@ -85,39 +100,45 @@ PkgTool and game files are not included in the Frame archive.
 
 ## Launch in VR
 
-In the Frame's desktop Steam client (for example accessed over RDP), choose
-**Games > Add a Non-Steam Game > Browse** and select `launch.sh`. Set these fields
-in the shortcut's Properties:
+After installation, choose **Library > Non-Steam > Devkit Game: AstroQuest_Frame**
+on the headset. Close the Steam dashboard so the OpenXR session receives input.
+The launcher uses the Frame's built-in VR runtime, installed Steam Linux Runtime
+4 ARM64 and system Vulkan driver.
 
-| Field | Value |
-| --- | --- |
-| Name | `AstroQuest-Frame` |
-| Target | `"/home/steamos/Applications/astroquest-frame/launch.sh"` |
-| Start In | `"/home/steamos/Applications/astroquest-frame"` |
-| Include in VR Library | Enabled |
-
-Leave Launch Options empty for the default game location. For a different
-extracted game folder, set Launch Options to its quoted full path, e.g.
-`"/home/steamos/Games/MyDump/CUSA12431"`. The launcher treats that first argument
-as the game folder.
-
-Launch the shortcut from the headset library. It uses the Frame's built-in VR
-runtime. Close the Steam dashboard so the OpenXR session receives input.
-
-To launch from a terminal, or use a game stored elsewhere:
+For a terminal launch from the default installation:
 
 ```sh
 ~/Applications/astroquest-frame/launch.sh
 ~/Applications/astroquest-frame/launch.sh /path/to/CUSA12431
 ```
 
-The launcher invokes Steam Linux Runtime 4 ARM64 and uses the active OpenXR
-runtime and system Vulkan driver. Proton is not required. Extra emulator
-arguments may follow the game folder.
+Extra emulator arguments may follow the game folder. Quit and relaunch after
+updating so the running game loads the new binary and bindings.
+
+### Alternative: SteamOS Devkit Client
+
+You can deploy from a PC with the
+[SteamOS Devkit Client](https://partner.steamgames.com/doc/steamhardware/steamframe/loadgames).
+Extract the archive **on that PC**. Enable Developer Mode on the Frame, select
+**Pair new host**, register the Frame in the client's **Devkits** tab, and confirm
+pairing in the headset. Open **Title Upload** and use:
+
+| Field | Value |
+| --- | --- |
+| Name | `AstroQuest_Frame` |
+| Local Folder | The extracted `astroquest-frame` folder on your PC, containing `astroquest` and `launch.sh` |
+| Start Command | `./launch.sh` |
+| Runtime | `Not specified` — the packaged launcher invokes Runtime 4 ARM64 itself |
+
+Upload, then use **Start** or launch the resulting devkit game from the headset's
+Non-Steam library. Install Runtime 4 ARM64 on the Frame before launching; the
+installer above opens its Steam dialog when needed. Devkit title IDs use
+underscores here because the client's name validation does not accept hyphens.
+A custom game path can follow `./launch.sh` as a quoted argument in Start Command.
 
 ## Controls
 
-These are the native Frame bindings in v0.1.1, with the default right controller
+These are the native Frame bindings in v0.1.1 and later, with the default right controller
 supplying the virtual controller's position and orientation:
 
 | Frame input | PS4 input / behavior |
@@ -202,16 +223,17 @@ settings; use their environment variables for this build.
 | `~/.local/share/astroquest/user/log/shad_log.txt` | Emulator log |
 
 If `XDG_DATA_HOME` is set, the data and logs use `$XDG_DATA_HOME/astroquest`.
-Extract a newer archive into the same application directory and restart the game.
-Replacing the application preserves the separate save directory.
+Extract a newer archive, run its `install.sh`, and restart the game.
+The installer replaces the application and preserves the separate save directory.
 
 ## Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
+| Installer reports missing Steam | Start Steam and run as the logged-in Steam user, without sudo |
 | Launcher prints its usage and exits | Pass an extracted game folder containing `eboot.bin` and `sce_sys/param.sfo` |
-| Launcher asks for the ARM64 runtime | Install Steam Linux Runtime 4.0 ARM64 at the path in Requirements |
-| Flat window or black headset view | Enable Include in VR Library on the Frame's shortcut, check that its built-in VR runtime is running, and inspect the console log |
+| Installer opens a runtime installation dialog | Finish installing Steam Linux Runtime 4.0 - Arm64 in the headset, then rerun `install.sh` |
+| Flat window or black headset view | Check that the Frame's built-in VR runtime is running and inspect the console log |
 | Controllers do not respond | Close the Steam dashboard and give the game focus |
 | B, X and Y all act as Square | Restart with v0.1.1 and check for `Steam Frame native bindings` in the log; the runtime must offer the Frame extension |
 | D-pad does not respond | Restart with v0.1.1; check in a screen that uses the D-pad |
@@ -243,8 +265,7 @@ The build also runs the FEX smoke/harness checks and checks ARM64 output and
 runtime library resolution.
 
 Output is `build/AstroQuest-SteamFrame-ARM64.tar.gz`; its staging directory is
-`build/astroquest-frame/`. Install that archive as described above. The script does
-not install the app or add a Steam shortcut automatically.
+`build/astroquest-frame/`. Install that archive using its `install.sh`, as described above.
 
 The container stays running after the script finishes. To stop it after building:
 

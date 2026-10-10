@@ -5,7 +5,7 @@ ARM64 Linux build of AstroQuest. The emulator runs on the headset, using FEXCore
 for the PS4 game's CPU instructions, Vulkan for rendering, and SteamVR OpenXR for
 stereo VR and tracking.
 
-**[Download v0.1.1](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1)**
+**[Download v0.1.2](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.2)**
 · [Detailed setup and build guide](README-FRAME.md)
 · [Report an issue](https://github.com/mitch030504/AstroQuest-Frame/issues)
 
@@ -44,47 +44,43 @@ from AstroQuest; it has not been checked on Frame. Other builds are unverified.
 
 ## Install and launch
 
-Run these commands **on the Frame**, in its terminal or through SSH. See
-[Valve's developer-mode setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup#developer-mode)
-if you need remote access.
+Run the installer **on the Frame**, as your normal Steam user. For SSH access,
+see [Valve's developer-mode setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup#developer-mode).
 
-1. Open the ARM64 runtime's installation dialog on the Frame:
-
-   ```sh
-   steam steam://install/4185400
-   ```
-
-   Finish installing **Steam Linux Runtime 4.0 - Arm64** in Steam.
-2. Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
-   [v0.1.1](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.1).
-   In the directory containing both downloads, run:
+1. Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
+   [v0.1.2](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.2)
+   and put both files in the same folder on the Frame.
+2. In that folder, run:
 
    ```sh
    sha256sum -c SHA256SUMS.txt && \
-   mkdir -p ~/Applications && \
-   tar -xzf AstroQuest-SteamFrame-ARM64.tar.gz -C ~/Applications
+   tar -xzf AstroQuest-SteamFrame-ARM64.tar.gz && \
+   bash astroquest-frame/install.sh
    ```
 
-3. Put the extracted US base game in `~/Games/AstroQuest/CUSA12431`. If you have
-   update 1.04, put its extracted files in the sibling `CUSA12431-UPDATE` folder.
-   Both folders need their own `sce_sys/param.sfo`. The update alone is not the
-   base game. See [game preparation](README-FRAME.md#prepare-the-game) for the
-   Linux PKG extraction caveat.
-4. In the Frame's desktop Steam client (for example over RDP), add
-   `/home/steamos/Applications/astroquest-frame/launch.sh` as a non-Steam game. Name the
-   shortcut **AstroQuest-Frame** and enable **Include in VR Library** in its
-   Properties. Use the [exact shortcut fields](README-FRAME.md#launch-in-vr).
-   Launch it from the headset library and close the Steam dashboard to give the
-   game focus.
+   The installer copies the app to `~/Applications/astroquest-frame` and registers
+   its Steam shortcut through the Frame's devkit interface. If the ARM64 runtime
+   is missing, it opens Steam's install dialog; finish that installation in the
+   headset, then rerun `install.sh`.
+3. Put your extracted US base game in `~/Games/AstroQuest/CUSA12431`. Optional
+   update 1.04 goes in the sibling `CUSA12431-UPDATE` folder. Both folders need
+   their own `sce_sys/param.sfo`. See
+   [game preparation](README-FRAME.md#prepare-the-game) for extraction details.
+4. In the headset, open **Library > Non-Steam > Devkit Game: AstroQuest_Frame**.
+   Close the Steam dashboard to give the game focus.
 
-To use a game stored elsewhere, pass its extracted folder to the launcher:
+For a game stored elsewhere, pass its extracted folder to the installer:
 
 ```sh
-~/Applications/astroquest-frame/launch.sh /path/to/CUSA12431
+bash astroquest-frame/install.sh /path/to/CUSA12431
 ```
 
-This Linux build launches through Steam Linux Runtime 4 ARM64. It does not need
-Proton. Restart the game after replacing an older build to load the new controls.
+That location is saved for the shortcut and retained when you rerun the installer
+without an argument. Updating uses the same installer; quit and relaunch the game
+to load the new build. This native Linux package uses Steam Linux Runtime 4 ARM64.
+
+The SteamOS Devkit Client can also upload the app and add its shortcut; see
+[the alternative workflow](README-FRAME.md#alternative-steamos-devkit-client).
 
 ## Frame controls
 
@@ -115,8 +111,7 @@ Frame controllers is filtered out during VR so it cannot compete with OpenXR inp
 
 ## Updates, settings and troubleshooting
 
-Extract a newer release into the same `~/Applications` directory, then restart
-the game. Saves and configuration live separately in
+Extract a newer release and run its `install.sh`, then restart the game. Saves and configuration live separately in
 `~/.local/share/astroquest/user`; replacing the application keeps them.
 
 The default scene resolution is **816×870 per eye**. Higher resolutions and
@@ -125,7 +120,7 @@ Performance depends on the scene and settings; this release has no guaranteed
 frame rate.
 
 For a black screen or missing input, check the game folder, installed ARM64
-runtime, SteamVR, the shortcut's VR-library flag and dashboard focus. See
+runtime, the Frame's built-in VR runtime and dashboard focus. See
 [troubleshooting](README-FRAME.md#troubleshooting) before reporting a problem.
 Console output is in `~/.local/share/astroquest/logs/console.log`.
 
