@@ -24,7 +24,7 @@ that container. Compilation uses two jobs. Output is
 ## Install and run
 
 Download `AstroQuest-SteamFrame-ARM64.tar.gz` from
-[the release page](https://github.com/mitch030504/AstroQuest/releases/tag/steam-frame-v0.1.0).
+[the release page](https://github.com/mitch030504/AstroQuest/releases/tag/steam-frame-v0.1.1).
 Install **Steam Linux Runtime 4.0 ARM64** in Steam before launching.
 
 Extract the archive into `~/Applications`. Put the extracted US game in
@@ -62,6 +62,10 @@ the same button, so it must support `XR_VALVE_frame_controller_interaction`.
 Triggers and grips provide the existing gadget gestures. Press the left View
 button for OPTIONS, or press both sticks together to recenter. The right
 controller supplies the controller's tracked pose.
+The left D-pad maps to the PS4 D-pad. The right stick has no normal camera-turn
+binding: it moves a finger on the touchpad for gadgets, and pressing it clicks
+the touchpad. Hold the left grip and flick the right stick sideways to turn the
+view in steps.
 SDL gamepads, including DualSense, remain supported. Audio and microphone use
 the system defaults.
 While VR is active, the emulator filters out the Frame controllers' duplicate SDL gamepad

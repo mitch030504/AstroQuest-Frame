@@ -442,6 +442,10 @@ struct OpenXrHost::Impl {
     XrAction act_square{XR_NULL_HANDLE};
     XrAction act_circle{XR_NULL_HANDLE};
     XrAction act_triangle{XR_NULL_HANDLE};
+    XrAction act_up{XR_NULL_HANDLE};
+    XrAction act_down{XR_NULL_HANDLE};
+    XrAction act_left{XR_NULL_HANDLE};
+    XrAction act_right{XR_NULL_HANDLE};
     XrAction act_l1{XR_NULL_HANDLE};
     XrAction act_r1{XR_NULL_HANDLE};
     XrAction act_l2{XR_NULL_HANDLE};
@@ -961,6 +965,10 @@ struct OpenXrHost::Impl {
         made = made && make(act_square, "square", "Square", XR_ACTION_TYPE_BOOLEAN_INPUT);
         made = made && make(act_circle, "circle", "Circle", XR_ACTION_TYPE_BOOLEAN_INPUT);
         made = made && make(act_triangle, "triangle", "Triangle", XR_ACTION_TYPE_BOOLEAN_INPUT);
+        made = made && make(act_up, "dpad_up", "D-pad up", XR_ACTION_TYPE_BOOLEAN_INPUT);
+        made = made && make(act_down, "dpad_down", "D-pad down", XR_ACTION_TYPE_BOOLEAN_INPUT);
+        made = made && make(act_left, "dpad_left", "D-pad left", XR_ACTION_TYPE_BOOLEAN_INPUT);
+        made = made && make(act_right, "dpad_right", "D-pad right", XR_ACTION_TYPE_BOOLEAN_INPUT);
         made = made && make(act_l1, "l1", "L1", XR_ACTION_TYPE_FLOAT_INPUT);
         made = made && make(act_r1, "r1", "R1", XR_ACTION_TYPE_FLOAT_INPUT);
         made = made && make(act_l2, "l2", "L2", XR_ACTION_TYPE_FLOAT_INPUT);
@@ -1002,6 +1010,12 @@ struct OpenXrHost::Impl {
             bind(act_triangle,
                  frame ? "/user/hand/right/input/y/click"
                        : index ? "/user/hand/left/input/b/click" : "/user/hand/left/input/y/click");
+            if (frame) {
+                bind(act_up, "/user/hand/left/input/dpad_up/click");
+                bind(act_down, "/user/hand/left/input/dpad_down/click");
+                bind(act_left, "/user/hand/left/input/dpad_left/click");
+                bind(act_right, "/user/hand/left/input/dpad_right/click");
+            }
             bind(act_l1, "/user/hand/left/input/squeeze/value");
             bind(act_r1, "/user/hand/right/input/squeeze/value");
             bind(act_l2, "/user/hand/left/input/trigger/value");
@@ -1195,6 +1209,10 @@ struct OpenXrHost::Impl {
         const bool blow = circle && triangle;
         add(circle && !blow, Buttons::Circle);
         add(triangle && !blow, Buttons::Triangle);
+        add(pressed(act_up), Buttons::Up);
+        add(pressed(act_down), Buttons::Down);
+        add(pressed(act_left), Buttons::Left);
+        add(pressed(act_right), Buttons::Right);
         add(pressed(act_options), Buttons::Options);
         const bool left_stick_in = pressed(act_l3);
         const bool right_stick_in = pressed(act_finger_press);
@@ -1228,7 +1246,8 @@ struct OpenXrHost::Impl {
                            (True(buttons & Buttons::Square) ? 2u : 0u) | (circle ? 4u : 0u) |
                            (triangle ? 8u : 0u) | (left_stick_in ? 16u : 0u) |
                            (right_stick_in ? 32u : 0u) | (pushed(move) ? 64u : 0u) |
-                           (pushed(finger) ? 128u : 0u);
+                           (pushed(finger) ? 128u : 0u) |
+                           ((static_cast<u32>(buttons) & 0xf0u) << 4);
         const bool used = (in_use & ~controllers_in_use) != 0;
         controllers_in_use = in_use;
         if (!Input::FirstPadSource().Update(seconds, gamepad, used)) {
