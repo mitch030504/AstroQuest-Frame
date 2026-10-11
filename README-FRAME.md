@@ -188,9 +188,9 @@ form `NAME=value %command%`. The defaults below refer to `tools/launch-frame.sh`
 
 | Setting | Behavior |
 | --- | --- |
-| `SHADPS4_TITLE_RESOLUTION=3` | Default scene resolution, 816×870 per eye |
+| `SHADPS4_TITLE_RESOLUTION=3` | 816×870 per eye; default when foveation is off |
 | `SHADPS4_TITLE_RESOLUTION=4` | 960×1080 per eye |
-| `SHADPS4_TITLE_RESOLUTION=5` | 1200×1280 per eye |
+| `SHADPS4_TITLE_RESOLUTION=5` | 1200×1280 per eye; default when foveation is enabled |
 | `SHADPS4_TITLE_RESOLUTION=6` | 1440×1536 per eye |
 | `SHADPS4_VR_FOVEATION=1` | Experimental eye-tracked variable-rate shading; defaults to preset 5 unless a resolution is explicitly set |
 | `SHADPS4_MAX_MSAA=1` | Default maximum of one MSAA sample |
