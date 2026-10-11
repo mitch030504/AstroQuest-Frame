@@ -211,7 +211,8 @@ uses full-rate shading and records the fallback in its console log. The gaze
 sample is mapped across wide side-by-side stereo passes; invalid or older than
 100 ms samples also use full-rate shading. This experimental path has not yet
 been benchmarked or visually verified on the Frame, and does not promise a
-performance gain.
+performance gain. This setting is only in development branch builds; the
+current release archive does not include it.
 
 The inherited pacing code defaults to `SHADPS4_VR_PACE=1`, targeting one rendered
 frame per headset refresh. The launcher's `SHADPS4_VR_FPS_CAP=60` default does not

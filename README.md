@@ -114,8 +114,9 @@ Extract a newer release and run its `install.sh`, then restart the game. Saves a
 
 The default scene resolution is **816×870 per eye**. Higher resolutions and
 pacing controls are documented in [settings](README-FRAME.md#settings).
-Eye-tracked foveation is experimental and opt-in; it uses the 1200×1280 preset
-unless a resolution is set explicitly. See the [foveation setting](README-FRAME.md#settings).
+Eye-tracked foveation is experimental, opt-in, and available in development
+branch builds; it uses the 1200×1280 preset unless a resolution is set explicitly.
+See the [foveation setting](README-FRAME.md#settings).
 Performance depends on the scene and settings; this release has no guaranteed
 frame rate.
 
