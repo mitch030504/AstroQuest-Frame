@@ -518,7 +518,8 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
     static bool warned_invalid_gaze = false;
     if (instance.IsFragmentShadingRateSupported() &&
         Core::Vr::OpenXrHost::Instance().IsAvailable() && new_state.width <= 4096 &&
-        new_state.height <= 4096 && new_state.width >= new_state.height * 3 / 2) {
+        new_state.height <= 4096 && new_state.num_layers == 1 &&
+        new_state.width >= new_state.height * 3 / 2) {
         const Core::Vr::GazeTarget gaze = Core::Vr::Runtime::Instance().GetGazeTarget();
         if (gaze.valid) {
             if (!foveation) {

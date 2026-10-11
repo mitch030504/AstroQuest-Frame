@@ -461,6 +461,7 @@ struct OpenXrHost::Impl {
     XrPath hand_paths[2]{XR_NULL_PATH, XR_NULL_PATH};
     XrSpace controller_space{XR_NULL_HANDLE};
     XrSpace gaze_space{XR_NULL_HANDLE};
+    XrPath gaze_path{XR_NULL_PATH};
     // Where each hand holds something, as far as the headset's runtime says where its own
     // controllers are: with a gamepad in both hands and those controllers put away, a runtime
     // that makes controllers up from the hands it sees (Virtual Desktop does) says where the
@@ -989,15 +990,14 @@ struct OpenXrHost::Impl {
         made = made && make(act_grip, "hands", "Hands", XR_ACTION_TYPE_POSE_INPUT, true);
         made = made &&
                make(act_rumble, "rumble", "Rumble", XR_ACTION_TYPE_VIBRATION_OUTPUT, true);
-        XrPath eyes_path{XR_NULL_PATH};
         if (gaze_extension) {
-            xrStringToPath(instance, "/user/eyes_ext", &eyes_path);
+            xrStringToPath(instance, "/user/eyes_ext", &gaze_path);
             XrActionCreateInfo gaze_info{XR_TYPE_ACTION_CREATE_INFO};
             std::strcpy(gaze_info.actionName, "eye_gaze");
             std::strcpy(gaze_info.localizedActionName, "Eye gaze");
             gaze_info.actionType = XR_ACTION_TYPE_POSE_INPUT;
             gaze_info.countSubactionPaths = 1;
-            gaze_info.subactionPaths = &eyes_path;
+            gaze_info.subactionPaths = &gaze_path;
             if (XR_FAILED(xrCreateAction(action_set, &gaze_info, &act_gaze))) {
                 gaze_extension = false;
                 LOG_WARNING(Core_Vr, "Eye-gaze action unavailable; foveation will use full rate");
@@ -1110,7 +1110,7 @@ struct OpenXrHost::Impl {
         }
         if (gaze_extension) {
             space_info.action = act_gaze;
-            space_info.subactionPath = eyes_path;
+            space_info.subactionPath = gaze_path;
             if (XR_FAILED(xrCreateActionSpace(session, &space_info, &gaze_space))) {
                 gaze_space = XR_NULL_HANDLE;
                 gaze_extension = false;
@@ -1174,7 +1174,7 @@ struct OpenXrHost::Impl {
         if (gaze_extension && gaze_space != XR_NULL_HANDLE) {
             XrActionStateGetInfo get_gaze{XR_TYPE_ACTION_STATE_GET_INFO};
             get_gaze.action = act_gaze;
-            get_gaze.subactionPath = XR_NULL_PATH;
+            get_gaze.subactionPath = gaze_path;
             XrActionStatePose state{XR_TYPE_ACTION_STATE_POSE};
             XrSpaceLocation location{XR_TYPE_SPACE_LOCATION};
             if (XR_SUCCEEDED(xrGetActionStatePose(session, &get_gaze, &state)) &&
