@@ -353,8 +353,18 @@ GraphicsPipeline::GraphicsPipeline(
     // In practice, we use dynamic state for all of it.
     constexpr vk::PipelineDepthStencilStateCreateInfo depth_stencil_info = {};
 
-    const vk::GraphicsPipelineCreateInfo pipeline_info = {
+    // Without this the combiners default to KEEP and the foveation map is ignored.
+    const vk::PipelineFragmentShadingRateStateCreateInfoKHR shading_rate_state = {
         .pNext = &pipeline_rendering_ci,
+        .fragmentSize = {1, 1},
+        .combinerOps = std::array{vk::FragmentShadingRateCombinerOpKHR::eKeep,
+                                  vk::FragmentShadingRateCombinerOpKHR::eReplace},
+    };
+
+    const vk::GraphicsPipelineCreateInfo pipeline_info = {
+        .pNext = instance.IsFragmentShadingRateSupported()
+                     ? static_cast<const void*>(&shading_rate_state)
+                     : &pipeline_rendering_ci,
         .flags = instance.IsFragmentShadingRateSupported()
                      ? vk::PipelineCreateFlagBits::eRenderingFragmentShadingRateAttachmentKHR
                      : vk::PipelineCreateFlags{},
