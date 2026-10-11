@@ -279,8 +279,6 @@ bool Instance::CreateDevice() {
             shading_rate_properties_chain
                 .get<vk::PhysicalDeviceFragmentShadingRatePropertiesKHR>();
     }
-    fragment_shading_rate_features =
-        feature_chain.get<vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
     LOG_INFO(Render_Vulkan, "Physical device subgroup size {}", vk11_props.subgroupSize);
 
     if (available_extensions.empty()) {
