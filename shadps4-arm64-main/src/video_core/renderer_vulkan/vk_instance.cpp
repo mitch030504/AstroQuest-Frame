@@ -329,7 +329,9 @@ bool Instance::CreateDevice() {
                 vk::Result::eSuccess) {
                 const auto supports = [&](vk::Extent2D rate) {
                     return std::ranges::any_of(rates, [&](const auto& supported) {
-                        return supported.fragmentSize == rate;
+                        return supported.fragmentSize == rate &&
+                               static_cast<bool>(supported.sampleCounts &
+                                                 vk::SampleCountFlagBits::e1);
                     });
                 };
                 shading_rate_levels_supported =
