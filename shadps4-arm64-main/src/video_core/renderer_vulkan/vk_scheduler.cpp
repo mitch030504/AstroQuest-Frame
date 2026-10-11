@@ -540,12 +540,16 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
                              vk::ImageUsageFlagBits::eTransferDst,
                     .initialLayout = vk::ImageLayout::eUndefined,
                 });
-                foveation->view = instance.GetDevice().createImageViewUnique(vk::ImageViewCreateInfo{
+                auto [view_result, view] =
+                    instance.GetDevice().createImageViewUnique(vk::ImageViewCreateInfo{
                     .image = foveation->image,
                     .viewType = vk::ImageViewType::e2D,
                     .format = vk::Format::eR8Uint,
                     .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
                 });
+                ASSERT_MSG(view_result == vk::Result::eSuccess,
+                           "Unable to create foveation-rate view: {}", vk::to_string(view_result));
+                foveation->view = std::move(view);
                 LOG_INFO(Render_Vulkan,
                          "Eye-tracked foveation map active ({}x{} texels; 1x1 to 10 degrees, "
                          "2x2 to 35 degrees, then 4x4)",
