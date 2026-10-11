@@ -186,6 +186,10 @@ const Settings& GetSettings() {
                 parsed.resolution = Settings::Resolution::Pinned;
                 parsed.pinned_level = level;
             }
+        } else if (const char* value = std::getenv("SHADPS4_VR_FOVEATION");
+                   value != nullptr && value[0] == '1') {
+            parsed.resolution = Settings::Resolution::Pinned;
+            parsed.pinned_level = 5;
         }
         if (const char* value = std::getenv("SHADPS4_VR_PACE"); value != nullptr) {
             const s32 pace = std::atoi(value);
