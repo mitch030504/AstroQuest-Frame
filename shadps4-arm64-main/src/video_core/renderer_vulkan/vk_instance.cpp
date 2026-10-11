@@ -318,15 +318,13 @@ bool Instance::CreateDevice() {
             std::vector<vk::PhysicalDeviceFragmentShadingRateKHR> rates(count);
             if (physical_device.getFragmentShadingRatesKHR(&count, rates.data()) ==
                 vk::Result::eSuccess) {
-                const auto supports = [&](vk::FragmentShadingRateNV rate) {
+                const auto supports = [&](vk::Extent2D rate) {
                     return std::ranges::any_of(rates, [&](const auto& supported) {
-                        return supported.shadingRate == rate;
+                        return supported.fragmentSize == rate;
                     });
                 };
                 shading_rate_levels_supported =
-                    supports(vk::FragmentShadingRateNV::e1InvocationPerPixel) &&
-                    supports(vk::FragmentShadingRateNV::e1InvocationPer2X2Pixels) &&
-                    supports(vk::FragmentShadingRateNV::e1InvocationPer4X4Pixels);
+                    supports({1, 1}) && supports({2, 2}) && supports({4, 4});
             }
         }
         const auto [format_result, format_properties] =

@@ -354,10 +354,10 @@ GraphicsPipeline::GraphicsPipeline(
     constexpr vk::PipelineDepthStencilStateCreateInfo depth_stencil_info = {};
 
     const vk::GraphicsPipelineCreateInfo pipeline_info = {
+        .pNext = &pipeline_rendering_ci,
         .flags = instance.IsFragmentShadingRateSupported()
                      ? vk::PipelineCreateFlagBits::eRenderingFragmentShadingRateAttachmentKHR
                      : vk::PipelineCreateFlags{},
-        .pNext = &pipeline_rendering_ci,
         .stageCount = static_cast<u32>(shader_stages.size()),
         .pStages = shader_stages.data(),
         .pVertexInputState = !instance.IsVertexInputDynamicState() ? &vertex_input_info : nullptr,
