@@ -5,7 +5,7 @@ ARM64 Linux build of AstroQuest. The emulator runs on the headset, using FEXCore
 for the PS4 game's CPU instructions, Vulkan for rendering, and SteamVR OpenXR for
 stereo VR and tracking.
 
-**[Download v0.1.2](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.2)**
+**[Download v0.2.0](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.2.0)**
 · [Detailed setup and build guide](README-FRAME.md)
 · [Report an issue](https://github.com/mitch030504/AstroQuest-Frame/issues)
 
@@ -13,7 +13,7 @@ stereo VR and tracking.
 
 ## Status
 
-This is an experimental prerelease. Opening gameplay, stereo rendering and head
+This is a beta release. Opening gameplay, stereo rendering and head
 and controller tracking have been observed on Steam Frame with SteamVR/OpenXR
 2.18.2. A full playthrough has not been completed.
 
@@ -46,7 +46,7 @@ Run the installer **on the Frame**, as your normal Steam user. For SSH access,
 see [Valve's developer-mode setup](https://partner.steamgames.com/doc/steamhardware/steamframe/setup#developer-mode).
 
 1. Download `AstroQuest-SteamFrame-ARM64.tar.gz` and `SHA256SUMS.txt` from
-   [v0.1.2](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.2)
+   [v0.2.0](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.2.0)
    and put both files in the same folder on the Frame.
 2. In that folder, run:
 
@@ -114,8 +114,8 @@ Extract a newer release and run its `install.sh`, then restart the game. Saves a
 
 The default scene resolution is **816×870 per eye**. Higher resolutions and
 pacing controls are documented in [settings](README-FRAME.md#settings).
-Eye-tracked foveation is experimental, opt-in, and available in development
-branch builds; it uses the 1200×1280 preset unless a resolution is set explicitly.
+Eye-tracked foveation is experimental and opt-in (beta); it uses the 1200×1280
+preset unless a resolution is set explicitly.
 See the [foveation setting](README-FRAME.md#settings).
 Performance depends on the scene and settings; this release has no guaranteed
 frame rate.

@@ -21,7 +21,7 @@ pass its folder explicitly to the launcher. Other builds are unverified.
 ## Install
 
 Download the ARM64 archive and `SHA256SUMS.txt` from
-[the v0.1.2 release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.1.2).
+[the v0.2.0 release](https://github.com/mitch030504/AstroQuest-Frame/releases/tag/steam-frame-v0.2.0).
 Put both files in a folder on the Frame, then run these commands **on the Frame**,
 using a terminal or SSH as your normal Steam user:
 
@@ -209,10 +209,10 @@ Enable eye-tracked foveation from the Frame shortcut's launch options with
 Vulkan fragment-shading-rate attachments. If either is unavailable, the game
 uses full-rate shading and records the fallback in its console log. The gaze
 sample is mapped onto the per-eye scene passes; invalid or older than
-100 ms samples also use full-rate shading. This experimental path has not yet
-been benchmarked or visually verified on the Frame, and does not promise a
-performance gain. This setting is only in development branch builds; the
-current release archive does not include it.
+100 ms samples also use full-rate shading. On the Frame, detail was
+seen to follow the player's gaze, and one level held 45–51 frames a second at
+1200×1280. It has not been benchmarked against full-rate shading in the same
+scene, and does not promise a performance gain.
 
 The inherited pacing code defaults to `SHADPS4_VR_PACE=1`, targeting one rendered
 frame per headset refresh. The launcher's `SHADPS4_VR_FPS_CAP=60` default does not
