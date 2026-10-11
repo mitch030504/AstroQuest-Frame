@@ -556,7 +556,13 @@ struct OpenXrHost::Impl {
             return offered_one;
         };
         hand_extension = track_hands && enable_if_offered(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
-        gaze_extension = enable_if_offered(XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME);
+        const char* foveation_env = std::getenv("SHADPS4_VR_FOVEATION");
+        const bool foveation_requested = foveation_env != nullptr && foveation_env[0] == '1';
+        gaze_extension =
+            foveation_requested && enable_if_offered(XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME);
+        if (foveation_requested && !gaze_extension) {
+            LOG_WARNING(Core_Vr, "Eye-gaze extension unavailable; foveation will use full rate");
+        }
         has_refresh_rate = enable_if_offered(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
         has_frame_controller = enable_if_offered("XR_VALVE_frame_controller_interaction");
 #ifdef _WIN32

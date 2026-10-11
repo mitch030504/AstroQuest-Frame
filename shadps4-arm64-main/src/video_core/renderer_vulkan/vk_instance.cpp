@@ -248,9 +248,15 @@ bool Instance::CreateDevice() {
                           vk::PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT,
                           vk::PhysicalDeviceShaderAtomicFloat2FeaturesEXT,
                           vk::PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR,
-                          vk::PhysicalDeviceImage2DViewOf3DFeaturesEXT,
-                          vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
+                          vk::PhysicalDeviceImage2DViewOf3DFeaturesEXT>();
     features = feature_chain.get().features;
+    if (shading_rate_extension) {
+        const auto shading_rate_chain =
+            physical_device.getFeatures2<vk::PhysicalDeviceFeatures2,
+                                         vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
+        fragment_shading_rate_features =
+            shading_rate_chain.get<vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
+    }
     LOG_INFO(Render_Vulkan, "GPU_ClipCull: clip={} cull={} combined={} featClip={} featCull={}",
              properties.limits.maxClipDistances, properties.limits.maxCullDistances,
              properties.limits.maxCombinedClipAndCullDistances,
@@ -260,14 +266,19 @@ bool Instance::CreateDevice() {
     const vk::StructureChain properties_chain = physical_device.getProperties2<
         vk::PhysicalDeviceProperties2, vk::PhysicalDeviceVulkan11Properties,
         vk::PhysicalDeviceVulkan12Properties, vk::PhysicalDeviceVulkan13Properties,
-        vk::PhysicalDevicePushDescriptorPropertiesKHR,
-        vk::PhysicalDeviceFragmentShadingRatePropertiesKHR>();
+        vk::PhysicalDevicePushDescriptorPropertiesKHR>();
     vk11_props = properties_chain.get<vk::PhysicalDeviceVulkan11Properties>();
     vk12_props = properties_chain.get<vk::PhysicalDeviceVulkan12Properties>();
     vk13_props = properties_chain.get<vk::PhysicalDeviceVulkan13Properties>();
     push_descriptor_props = properties_chain.get<vk::PhysicalDevicePushDescriptorPropertiesKHR>();
-    fragment_shading_rate_properties =
-        properties_chain.get<vk::PhysicalDeviceFragmentShadingRatePropertiesKHR>();
+    if (shading_rate_extension) {
+        const auto shading_rate_properties_chain =
+            physical_device.getProperties2<vk::PhysicalDeviceProperties2,
+                                           vk::PhysicalDeviceFragmentShadingRatePropertiesKHR>();
+        fragment_shading_rate_properties =
+            shading_rate_properties_chain
+                .get<vk::PhysicalDeviceFragmentShadingRatePropertiesKHR>();
+    }
     fragment_shading_rate_features =
         feature_chain.get<vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
     LOG_INFO(Render_Vulkan, "Physical device subgroup size {}", vk11_props.subgroupSize);
