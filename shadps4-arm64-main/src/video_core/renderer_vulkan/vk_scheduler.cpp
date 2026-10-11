@@ -45,7 +45,6 @@ struct FoveationState {
     u32 image_width{4096};
     u32 image_height{4096};
     bool image_initialized{};
-    bool warned_invalid_gaze{};
     float last_left_x{-1.0f};
     float last_right_x{-1.0f};
     float last_y{-1.0f};
@@ -545,6 +544,10 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
                     .format = vk::Format::eR8Uint,
                     .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
                 });
+                LOG_INFO(Render_Vulkan,
+                         "Eye-tracked foveation map active ({}x{} texels; 1x1 to 10 degrees, "
+                         "2x2 to 35 degrees, then 4x4)",
+                         foveation->texel_size.width, foveation->texel_size.height);
             }
             if (foveation->last_width != new_state.width ||
                 foveation->last_height != new_state.height ||
@@ -627,11 +630,6 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
             shading_rate_attachment.imageView = *foveation->view;
             shading_rate_attachment.shadingRateAttachmentTexelSize = foveation->texel_size;
             shading_rate_info = &shading_rate_attachment;
-        } else if (foveation && !foveation->warned_invalid_gaze) {
-            LOG_WARNING(Render_Vulkan,
-                        "Eye gaze is unavailable or stale; rendering at full fragment rate");
-            foveation->warned_invalid_gaze = true;
-            warned_invalid_gaze = true;
         } else if (!warned_invalid_gaze) {
             LOG_WARNING(Render_Vulkan,
                         "Eye gaze is unavailable or stale; rendering at full fragment rate");
