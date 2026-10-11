@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <array>
+
 #include "common/types.h"
 
 namespace Core::Vr {
@@ -42,6 +44,9 @@ void OnFrameSubmitted();
 /// refreshes one and a half times as slowly as the display, and the title keeps in step with
 /// the display again, at a frame for every three refreshes.
 u32 FramePace();
+
+/// The size the title draws its scene at for one eye just now, {0, 0} where nothing is known.
+std::array<u32, 2> SceneEyeSize();
 
 /// Called with the head position just handed to the title: what the title makes of it goes to
 /// the log every now and then, and whenever the title takes stock of the player's seat anew.

@@ -12,6 +12,7 @@
 #include <ctime>
 #include <utility>
 
+#include "core/known_title.h"
 #include "core/vr/foveation_map.h"
 #include "core/vr/openxr_host.h"
 #include "core/vr/vr_runtime.h"
@@ -517,11 +518,12 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
     };
     const vk::RenderingFragmentShadingRateAttachmentInfoKHR* shading_rate_info = nullptr;
     static bool warned_invalid_gaze = false;
+    // The title draws its scene one eye at a time: only that pass is foveated.
+    const auto [scene_width, scene_height] = Core::KnownTitle::SceneEyeSize();
     const bool foveation_pass = instance.IsFragmentShadingRateSupported() &&
                                 Core::Vr::OpenXrHost::Instance().IsAvailable() &&
-                                new_state.width <= 4096 && new_state.height <= 4096 &&
-                                new_state.num_layers == 1 &&
-                                new_state.width >= new_state.height * 3 / 2;
+                                new_state.num_layers == 1 && new_state.width == scene_width &&
+                                new_state.height == scene_height;
     // ponytail: diagnostic for the Frame foveation test; drop once the eye pass is confirmed.
     if (instance.IsFragmentShadingRateSupported()) {
         static std::vector<u64> logged_passes;
@@ -576,7 +578,8 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
                 foveation->last_right_x != gaze.right_x || foveation->last_y != gaze.y) {
                 auto rates = Core::Vr::BuildFoveationMap(
                     new_state.width, new_state.height, foveation->texel_size.width,
-                    foveation->texel_size.height, Core::Vr::Runtime::Instance().TitleFov(), gaze);
+                    foveation->texel_size.height, Core::Vr::Runtime::Instance().TitleFov(), gaze,
+                    false);
                 // Test mode: 4x4 everywhere, so whether the driver honours the map is obvious.
                 static const bool coarse_test = [] {
                     const char* value = std::getenv("SHADPS4_VR_FOVEATION_TEST");

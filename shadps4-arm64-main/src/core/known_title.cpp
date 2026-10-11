@@ -137,6 +137,8 @@ constexpr s32 SlowestPace = 6;
 /// The refreshes of the display frames are given at the moment, for the thread that makes
 /// the headset's.
 std::atomic<u32> frame_pace{0};
+/// The scene's size for an eye, width in the high half; 0 where nothing is known.
+std::atomic<u64> scene_eye_size{0};
 
 struct Settings {
     bool time_step{true};
@@ -836,6 +838,10 @@ void OnFrameSubmitted() {
     }
     const s32 resolution = TendResolution(base, *build, wanted);
     frame_pace.store(governor.Pace(), std::memory_order_relaxed);
+    if (resolution >= 0 && resolution <= LastHeadsetLevel) {
+        const auto& size = GetLarger().sizes[resolution];
+        scene_eye_size.store(u64{size[0]} << 32 | size[1], std::memory_order_relaxed);
+    }
 
     if (settings.time_step) {
         // Shorter steps than the title's own only where it is made to draw faster than it
@@ -875,6 +881,11 @@ void OnFrameSubmitted() {
 
 u32 FramePace() {
     return frame_pace.load(std::memory_order_relaxed);
+}
+
+std::array<u32, 2> SceneEyeSize() {
+    const u64 size = scene_eye_size.load(std::memory_order_relaxed);
+    return {static_cast<u32>(size >> 32), static_cast<u32>(size)};
 }
 
 void Prepare() {

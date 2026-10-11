@@ -208,7 +208,7 @@ Enable eye-tracked foveation from the Frame shortcut's launch options with
 `SHADPS4_VR_FOVEATION=1 %command%`. It requires OpenXR eye-gaze support and
 Vulkan fragment-shading-rate attachments. If either is unavailable, the game
 uses full-rate shading and records the fallback in its console log. The gaze
-sample is mapped across wide side-by-side stereo passes; invalid or older than
+sample is mapped onto the per-eye scene passes; invalid or older than
 100 ms samples also use full-rate shading. This experimental path has not yet
 been benchmarked or visually verified on the Frame, and does not promise a
 performance gain. This setting is only in development branch builds; the

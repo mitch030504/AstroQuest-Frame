@@ -12,9 +12,12 @@
 
 namespace Core::Vr {
 
+/// A stereo map has the eyes side by side; otherwise the whole width is one eye.
+// ponytail: one eye's fov serves both; the right eye's in/out asymmetry (<1 degree on Frame)
+// shifts its map slightly. Mirror the fov for the right eye if a headset is more lopsided.
 inline std::vector<u8> BuildFoveationMap(u32 width, u32 height, u32 texel_width,
                                          u32 texel_height, const Fov& fov,
-                                         const GazeTarget& gaze) {
+                                         const GazeTarget& gaze, bool stereo = true) {
     if (width == 0 || height == 0 || texel_width == 0 || texel_height == 0) {
         return {};
     }
@@ -34,8 +37,8 @@ inline std::vector<u8> BuildFoveationMap(u32 width, u32 height, u32 texel_width,
         const float tan_y = (1.0f - v) * fov.tan_top - v * fov.tan_bottom;
         for (u32 x = 0; x < map_width; ++x) {
             const float u = std::min((x * texel_width + texel_width * 0.5f) / width, 1.0f);
-            const u32 eye = u < 0.5f ? 0 : 1;
-            const float local_u = eye == 0 ? u * 2.0f : u * 2.0f - 1.0f;
+            const u32 eye = stereo && u >= 0.5f ? 1 : 0;
+            const float local_u = !stereo ? u : eye == 0 ? u * 2.0f : u * 2.0f - 1.0f;
             const float tan_x = -fov.tan_out + local_u * (fov.tan_out + fov.tan_in);
             const float gaze_x = eye == 0 ? gaze.left_x * 2.0f : gaze.right_x * 2.0f - 1.0f;
             const float gaze_tan_x = -fov.tan_out + gaze_x * (fov.tan_out + fov.tan_in);
