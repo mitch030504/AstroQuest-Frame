@@ -517,10 +517,25 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
     };
     const vk::RenderingFragmentShadingRateAttachmentInfoKHR* shading_rate_info = nullptr;
     static bool warned_invalid_gaze = false;
-    if (instance.IsFragmentShadingRateSupported() &&
-        Core::Vr::OpenXrHost::Instance().IsAvailable() && new_state.width <= 4096 &&
-        new_state.height <= 4096 && new_state.num_layers == 1 &&
-        new_state.width >= new_state.height * 3 / 2) {
+    const bool foveation_pass = instance.IsFragmentShadingRateSupported() &&
+                                Core::Vr::OpenXrHost::Instance().IsAvailable() &&
+                                new_state.width <= 4096 && new_state.height <= 4096 &&
+                                new_state.num_layers == 1 &&
+                                new_state.width >= new_state.height * 3 / 2;
+    // ponytail: diagnostic for the Frame foveation test; drop once the eye pass is confirmed.
+    if (instance.IsFragmentShadingRateSupported()) {
+        static std::vector<u64> logged_passes;
+        const u64 key = u64{new_state.width} | u64{new_state.height} << 16 |
+                        u64{new_state.num_layers} << 32;
+        if (logged_passes.size() < 64 &&
+            std::ranges::find(logged_passes, key) == logged_passes.end()) {
+            logged_passes.push_back(key);
+            LOG_INFO(Render_Vulkan, "Foveation pass {}x{}, {} layers: {}", new_state.width,
+                     new_state.height, new_state.num_layers,
+                     foveation_pass ? "eligible for the map" : "full rate");
+        }
+    }
+    if (foveation_pass) {
         const Core::Vr::GazeTarget gaze = Core::Vr::Runtime::Instance().GetGazeTarget();
         if (gaze.valid) {
             if (!foveation) {
@@ -559,9 +574,17 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
                 foveation->last_height != new_state.height ||
                 foveation->last_left_x != gaze.left_x ||
                 foveation->last_right_x != gaze.right_x || foveation->last_y != gaze.y) {
-                const auto rates = Core::Vr::BuildFoveationMap(
+                auto rates = Core::Vr::BuildFoveationMap(
                     new_state.width, new_state.height, foveation->texel_size.width,
                     foveation->texel_size.height, Core::Vr::Runtime::Instance().TitleFov(), gaze);
+                // Test mode: 4x4 everywhere, so whether the driver honours the map is obvious.
+                static const bool coarse_test = [] {
+                    const char* value = std::getenv("SHADPS4_VR_FOVEATION_TEST");
+                    return value != nullptr && value[0] == '1';
+                }();
+                if (coarse_test) {
+                    std::ranges::fill(rates, u8{10});
+                }
                 VideoCore::UniqueBuffer upload{instance.GetDevice(), instance.GetAllocator()};
                 upload.Create(vk::BufferCreateInfo{
                                   .size = rates.size(),
