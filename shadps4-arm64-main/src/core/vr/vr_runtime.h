@@ -72,6 +72,13 @@ struct Fov {
     float tan_bottom{1.262872f};
 };
 
+struct GazeTarget {
+    float left_x{0.25f};
+    float right_x{0.75f};
+    float y{0.5f};
+    bool valid{};
+};
+
 struct HeadsetIdentity {
     std::string runtime;
     std::string system;
@@ -166,6 +173,8 @@ public:
     // wherever its system last put them. Where the player actually sits in it, and which way
     // they face, is the "seat" (see RecenterSeat); the title is given poses relative to that.
     void UpdateHead(const DeviceState& host_state);
+    void SetGazeTarget(const GazeTarget& target);
+    GazeTarget GetGazeTarget() const;
     /// Declares the head's present position to be the resting one and the direction it looks
     /// in to be straight ahead. A title places its world around where the player sat when it
     /// last took stock (PlayStation VR: at its start, and when the player holds OPTIONS), and
@@ -300,6 +309,8 @@ private:
     std::chrono::steady_clock::time_point gesture_options_since;
     mutable std::mutex mutex;
     DeviceState head;
+    GazeTarget gaze_target;
+    std::chrono::steady_clock::time_point gaze_target_time;
     // What the host last said of the head, in its own space, and the seat in that space.
     DeviceState host_head;
     // Where the head was a moment ago, and how fast that says it moves.

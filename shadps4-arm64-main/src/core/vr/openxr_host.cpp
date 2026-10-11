@@ -325,6 +325,7 @@ struct OpenXrHost::Impl {
     bool available{};
     bool found_at_connect{};
     bool hand_extension{};
+    bool gaze_extension{};
     bool has_hand_tracking{};
     bool has_refresh_rate{};
     bool has_audio_guid{};
@@ -454,10 +455,12 @@ struct OpenXrHost::Impl {
     XrAction act_l3{XR_NULL_HANDLE};
     XrAction act_finger_press{XR_NULL_HANDLE};
     XrAction act_pose{XR_NULL_HANDLE};
+    XrAction act_gaze{XR_NULL_HANDLE};
     XrAction act_grip{XR_NULL_HANDLE};
     XrAction act_rumble{XR_NULL_HANDLE};
     XrPath hand_paths[2]{XR_NULL_PATH, XR_NULL_PATH};
     XrSpace controller_space{XR_NULL_HANDLE};
+    XrSpace gaze_space{XR_NULL_HANDLE};
     // Where each hand holds something, as far as the headset's runtime says where its own
     // controllers are: with a gamepad in both hands and those controllers put away, a runtime
     // that makes controllers up from the hands it sees (Virtual Desktop does) says where the
@@ -553,6 +556,7 @@ struct OpenXrHost::Impl {
             return offered_one;
         };
         hand_extension = track_hands && enable_if_offered(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+        gaze_extension = enable_if_offered(XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME);
         has_refresh_rate = enable_if_offered(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
         has_frame_controller = enable_if_offered("XR_VALVE_frame_controller_interaction");
 #ifdef _WIN32
@@ -979,6 +983,20 @@ struct OpenXrHost::Impl {
         made = made && make(act_grip, "hands", "Hands", XR_ACTION_TYPE_POSE_INPUT, true);
         made = made &&
                make(act_rumble, "rumble", "Rumble", XR_ACTION_TYPE_VIBRATION_OUTPUT, true);
+        XrPath eyes_path{XR_NULL_PATH};
+        if (gaze_extension) {
+            xrStringToPath(instance, "/user/eyes_ext", &eyes_path);
+            XrActionCreateInfo gaze_info{XR_TYPE_ACTION_CREATE_INFO};
+            std::strcpy(gaze_info.actionName, "eye_gaze");
+            std::strcpy(gaze_info.localizedActionName, "Eye gaze");
+            gaze_info.actionType = XR_ACTION_TYPE_POSE_INPUT;
+            gaze_info.countSubactionPaths = 1;
+            gaze_info.subactionPaths = &eyes_path;
+            if (XR_FAILED(xrCreateAction(action_set, &gaze_info, &act_gaze))) {
+                gaze_extension = false;
+                LOG_WARNING(Core_Vr, "Eye-gaze action unavailable; foveation will use full rate");
+            }
+        }
         if (!made) {
             LOG_WARNING(Core_Vr, "The headset's controllers could not be set up as a gamepad");
             return;
@@ -1050,6 +1068,23 @@ struct OpenXrHost::Impl {
             }
         }
 
+        if (gaze_extension) {
+            XrPath profile{XR_NULL_PATH};
+            XrPath gaze_pose{XR_NULL_PATH};
+            xrStringToPath(instance, "/interaction_profiles/ext/eye_gaze_interaction", &profile);
+            xrStringToPath(instance, "/user/eyes_ext/input/gaze_ext/pose", &gaze_pose);
+            const XrActionSuggestedBinding binding{act_gaze, gaze_pose};
+            XrInteractionProfileSuggestedBinding suggested{
+                XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+            suggested.interactionProfile = profile;
+            suggested.countSuggestedBindings = 1;
+            suggested.suggestedBindings = &binding;
+            if (XR_FAILED(xrSuggestInteractionProfileBindings(instance, &suggested))) {
+                gaze_extension = false;
+                LOG_WARNING(Core_Vr, "Eye-gaze binding unavailable; foveation will use full rate");
+            }
+        }
+
         XrSessionActionSetsAttachInfo attach{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
         attach.countActionSets = 1;
         attach.actionSets = &action_set;
@@ -1066,6 +1101,15 @@ struct OpenXrHost::Impl {
             controller_space = XR_NULL_HANDLE;
             LOG_WARNING(Core_Vr, "The headset's controllers cannot be located");
             return;
+        }
+        if (gaze_extension) {
+            space_info.action = act_gaze;
+            space_info.subactionPath = eyes_path;
+            if (XR_FAILED(xrCreateActionSpace(session, &space_info, &gaze_space))) {
+                gaze_space = XR_NULL_HANDLE;
+                gaze_extension = false;
+                LOG_WARNING(Core_Vr, "Eye-gaze space unavailable; foveation will use full rate");
+            }
         }
         for (int hand = 0; hand < 2; ++hand) {
             space_info.action = act_grip;
@@ -1105,6 +1149,7 @@ struct OpenXrHost::Impl {
     void UpdateControllers(XrTime time) {
         actions_synced = false;
         if (!actions_ready) {
+            Runtime::Instance().SetGazeTarget({});
             return;
         }
         const XrActiveActionSet active{action_set, XR_NULL_PATH};
@@ -1113,11 +1158,48 @@ struct OpenXrHost::Impl {
         sync.activeActionSets = &active;
         // (Anything but plain success: the game does not have the player's attention.)
         if (xrSyncActions(session, &sync) != XR_SUCCESS) {
+            Runtime::Instance().SetGazeTarget({});
             ReleaseControllers("the game is not what the player has in front of them");
             ApplyRumble(false);
             return;
         }
         actions_synced = true;
+        GazeTarget gaze{};
+        if (gaze_extension && gaze_space != XR_NULL_HANDLE) {
+            XrActionStateGetInfo get_gaze{XR_TYPE_ACTION_STATE_GET_INFO};
+            get_gaze.action = act_gaze;
+            get_gaze.subactionPath = XR_NULL_PATH;
+            XrActionStatePose state{XR_TYPE_ACTION_STATE_POSE};
+            XrSpaceLocation location{XR_TYPE_SPACE_LOCATION};
+            if (XR_SUCCEEDED(xrGetActionStatePose(session, &get_gaze, &state)) &&
+                state.isActive == XR_TRUE &&
+                XR_SUCCEEDED(xrLocateSpace(gaze_space, view_space, time, &location)) &&
+                (location.locationFlags & (XR_SPACE_LOCATION_POSITION_VALID_BIT |
+                                           XR_SPACE_LOCATION_ORIENTATION_VALID_BIT |
+                                           XR_SPACE_LOCATION_POSITION_TRACKED_BIT |
+                                           XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT)) ==
+                    (XR_SPACE_LOCATION_POSITION_VALID_BIT |
+                     XR_SPACE_LOCATION_ORIENTATION_VALID_BIT |
+                     XR_SPACE_LOCATION_POSITION_TRACKED_BIT |
+                     XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT)) {
+                const Quat orientation{location.pose.orientation.x, location.pose.orientation.y,
+                                      location.pose.orientation.z, location.pose.orientation.w};
+                const Vec3 direction = Rotate(orientation, {0.0f, 0.0f, -1.0f});
+                if (direction.z < -0.05f) {
+                    const Fov fov = Runtime::Instance().TitleFov();
+                    const float tan_x = direction.x / -direction.z;
+                    const float tan_y = direction.y / -direction.z;
+                    const float local_x = (tan_x + fov.tan_out) / (fov.tan_out + fov.tan_in);
+                    gaze.left_x = std::clamp(local_x, 0.0f, 1.0f) * 0.5f;
+                    gaze.right_x = 0.5f + std::clamp(local_x, 0.0f, 1.0f) * 0.5f;
+                    gaze.y = std::clamp((fov.tan_top - tan_y) /
+                                            (fov.tan_top + fov.tan_bottom),
+                                        0.0f, 1.0f);
+                    gaze.valid = true;
+                }
+            }
+        }
+        Runtime::Instance().SetGazeTarget(gaze);
         if (!use_controllers) {
             // Only where they are is of interest (see UpdatePad).
             return;
@@ -1514,6 +1596,10 @@ struct OpenXrHost::Impl {
         actions_ready = false;
         actions_synced = false;
         pad_source = 0;
+        if (gaze_space != XR_NULL_HANDLE) {
+            xrDestroySpace(gaze_space);
+            gaze_space = XR_NULL_HANDLE;
+        }
         if (controller_space != XR_NULL_HANDLE) {
             xrDestroySpace(controller_space);
             controller_space = XR_NULL_HANDLE;

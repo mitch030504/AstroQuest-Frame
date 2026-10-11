@@ -8,8 +8,15 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <utility>
+
+#include "core/vr/foveation_map.h"
+#include "core/vr/openxr_host.h"
+#include "core/vr/vr_runtime.h"
+#include "video_core/buffer_cache/buffer.h"
+#include "video_core/texture_cache/image.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -24,6 +31,27 @@
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 
 namespace Vulkan {
+
+struct FoveationState {
+    struct RetiredUploads {
+        u64 tick;
+        std::vector<VideoCore::UniqueBuffer> buffers;
+    };
+    VideoCore::UniqueImage image;
+    vk::UniqueImageView view;
+    std::vector<VideoCore::UniqueBuffer> uploads;
+    std::vector<RetiredUploads> retired;
+    vk::Extent2D texel_size{};
+    u32 image_width{4096};
+    u32 image_height{4096};
+    bool image_initialized{};
+    bool warned_invalid_gaze{};
+    float last_left_x{-1.0f};
+    float last_right_x{-1.0f};
+    float last_y{-1.0f};
+    u16 last_width{};
+    u16 last_height{};
+};
 
 constexpr u64 MAX_IN_FLIGHT_SUBMISSIONS = 8;
 
@@ -481,7 +509,137 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
                                          vk::ClearDepthStencilValue{.stencil = db.clear_value[1]}},
     };
 
+    vk::RenderingFragmentShadingRateAttachmentInfoKHR shading_rate_attachment{
+        .imageView = {},
+        .imageLayout = vk::ImageLayout::eFragmentShadingRateAttachmentOptimalKHR,
+        .shadingRateAttachmentTexelSize = {},
+    };
+    const vk::RenderingFragmentShadingRateAttachmentInfoKHR* shading_rate_info = nullptr;
+    static bool warned_invalid_gaze = false;
+    if (instance.IsFragmentShadingRateSupported() &&
+        Core::Vr::OpenXrHost::Instance().IsAvailable() && new_state.width <= 4096 &&
+        new_state.height <= 4096 && new_state.width >= new_state.height * 3 / 2) {
+        const Core::Vr::GazeTarget gaze = Core::Vr::Runtime::Instance().GetGazeTarget();
+        if (gaze.valid) {
+            if (!foveation) {
+                foveation = std::make_unique<FoveationState>();
+                foveation->texel_size = instance.FragmentShadingRateTexelSize();
+                foveation->image = VideoCore::UniqueImage{instance.GetDevice(),
+                                                          instance.GetAllocator()};
+                foveation->image.Create(vk::ImageCreateInfo{
+                    .imageType = vk::ImageType::e2D,
+                    .format = vk::Format::eR8Uint,
+                    .extent = {foveation->image_width, foveation->image_height, 1},
+                    .mipLevels = 1,
+                    .arrayLayers = 1,
+                    .samples = vk::SampleCountFlagBits::e1,
+                    .tiling = vk::ImageTiling::eOptimal,
+                    .usage = vk::ImageUsageFlagBits::eFragmentShadingRateAttachmentKHR |
+                             vk::ImageUsageFlagBits::eTransferDst,
+                    .initialLayout = vk::ImageLayout::eUndefined,
+                });
+                foveation->view = instance.GetDevice().createImageViewUnique(vk::ImageViewCreateInfo{
+                    .image = foveation->image,
+                    .viewType = vk::ImageViewType::e2D,
+                    .format = vk::Format::eR8Uint,
+                    .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
+                });
+            }
+            if (foveation->last_width != new_state.width ||
+                foveation->last_height != new_state.height ||
+                foveation->last_left_x != gaze.left_x ||
+                foveation->last_right_x != gaze.right_x || foveation->last_y != gaze.y) {
+                const auto rates = Core::Vr::BuildFoveationMap(
+                    new_state.width, new_state.height, foveation->texel_size.width,
+                    foveation->texel_size.height, Core::Vr::Runtime::Instance().TitleFov(), gaze);
+                VideoCore::UniqueBuffer upload{instance.GetDevice(), instance.GetAllocator()};
+                VmaAllocationInfo allocation_info{};
+                upload.Create(vk::BufferCreateInfo{
+                                  .size = rates.size(),
+                                  .usage = vk::BufferUsageFlagBits::eTransferSrc,
+                              },
+                              VideoCore::MemoryUsage::Upload, &allocation_info);
+                void* mapped{};
+                ASSERT_MSG(vmaMapMemory(instance.GetAllocator(), upload.allocation, &mapped) ==
+                               VK_SUCCESS,
+                           "Unable to map foveation-rate upload buffer");
+                std::memcpy(mapped, rates.data(), rates.size());
+                const VkResult flush_result =
+                    vmaFlushAllocation(instance.GetAllocator(), upload.allocation, 0, rates.size());
+                ASSERT_MSG(flush_result == VK_SUCCESS, "Foveation upload flush failed: {}",
+                           vk::to_string(vk::Result{flush_result}));
+                vmaUnmapMemory(instance.GetAllocator(), upload.allocation);
+
+                const u32 map_width =
+                    (new_state.width + foveation->texel_size.width - 1) /
+                    foveation->texel_size.width;
+                const u32 map_height =
+                    (new_state.height + foveation->texel_size.height - 1) /
+                    foveation->texel_size.height;
+                const vk::ImageMemoryBarrier to_transfer{
+                    .srcAccessMask = foveation->image_initialized
+                                         ? vk::AccessFlagBits::eFragmentShadingRateAttachmentReadKHR
+                                         : vk::AccessFlags{},
+                    .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+                    .oldLayout = foveation->image_initialized
+                                     ? vk::ImageLayout::eFragmentShadingRateAttachmentOptimalKHR
+                                     : vk::ImageLayout::eUndefined,
+                    .newLayout = vk::ImageLayout::eTransferDstOptimal,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = foveation->image,
+                    .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
+                };
+                current_cmdbuf.pipelineBarrier(
+                    foveation->image_initialized
+                        ? vk::PipelineStageFlagBits::eFragmentShadingRateAttachmentKHR
+                        : vk::PipelineStageFlagBits::eTopOfPipe,
+                    vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, to_transfer);
+                current_cmdbuf.copyBufferToImage(
+                    upload, foveation->image, vk::ImageLayout::eTransferDstOptimal,
+                    vk::BufferImageCopy{
+                        .imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1},
+                        .imageExtent = {map_width, map_height, 1},
+                    });
+                const vk::ImageMemoryBarrier to_attachment{
+                    .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                    .dstAccessMask = vk::AccessFlagBits::eFragmentShadingRateAttachmentReadKHR,
+                    .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+                    .newLayout = vk::ImageLayout::eFragmentShadingRateAttachmentOptimalKHR,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = foveation->image,
+                    .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1},
+                };
+                current_cmdbuf.pipelineBarrier(
+                    vk::PipelineStageFlagBits::eTransfer,
+                    vk::PipelineStageFlagBits::eFragmentShadingRateAttachmentKHR, {}, {}, {},
+                    to_attachment);
+                foveation->image_initialized = true;
+                foveation->last_width = new_state.width;
+                foveation->last_height = new_state.height;
+                foveation->last_left_x = gaze.left_x;
+                foveation->last_right_x = gaze.right_x;
+                foveation->last_y = gaze.y;
+                foveation->uploads.push_back(std::move(upload));
+            }
+            shading_rate_attachment.imageView = *foveation->view;
+            shading_rate_attachment.shadingRateAttachmentTexelSize = foveation->texel_size;
+            shading_rate_info = &shading_rate_attachment;
+        } else if (foveation && !foveation->warned_invalid_gaze) {
+            LOG_WARNING(Render_Vulkan,
+                        "Eye gaze is unavailable or stale; rendering at full fragment rate");
+            foveation->warned_invalid_gaze = true;
+            warned_invalid_gaze = true;
+        } else if (!warned_invalid_gaze) {
+            LOG_WARNING(Render_Vulkan,
+                        "Eye gaze is unavailable or stale; rendering at full fragment rate");
+            warned_invalid_gaze = true;
+        }
+    }
+
     const vk::RenderingInfo rendering_info = {
+        .pNext = shading_rate_info,
         .renderArea =
             {
                 .offset = {0, 0},
@@ -557,6 +715,11 @@ void Scheduler::PopPendingOperations() {
     while (!pending_ops.empty() && master_semaphore.IsFree(pending_ops.front().gpu_tick)) {
         pending_ops.front().callback();
         pending_ops.pop();
+    }
+    if (foveation) {
+        std::erase_if(foveation->retired, [this](const auto& upload) {
+            return master_semaphore.IsFree(upload.tick);
+        });
     }
 }
 
@@ -678,6 +841,10 @@ void Scheduler::SubmitExecution(SubmitInfo& info) {
         // resulting wait looks like a hang out of nowhere.
         LOG_CRITICAL(Render_Vulkan, "Queue submission {} failed: {}", signal_value,
                      vk::to_string(submit_result));
+    }
+    if (foveation && !foveation->uploads.empty()) {
+        foveation->retired.push_back({signal_value, std::move(foveation->uploads)});
+        foveation->uploads.clear();
     }
 
     AllocateWorkerCommandBuffers();

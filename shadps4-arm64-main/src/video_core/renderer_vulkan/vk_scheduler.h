@@ -6,6 +6,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <memory>
 #include <thread>
 #include <queue>
 #include <source_location>
@@ -21,6 +22,8 @@ class VkCtxScope;
 }
 
 namespace Vulkan {
+
+struct FoveationState;
 
 class Instance;
 
@@ -543,6 +546,7 @@ private:
     /// pipelines of its own, always in a pass of its own: nothing is assumed across passes.
     vk::Pipeline bound_pipeline{};
     tracy::VkCtxScope* profiler_scope{};
+    std::unique_ptr<FoveationState> foveation;
 };
 
 } // namespace Vulkan

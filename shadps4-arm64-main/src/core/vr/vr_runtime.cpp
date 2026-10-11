@@ -394,6 +394,21 @@ void Runtime::RequestRecenter() {
     Libraries::SystemService::PushSystemServiceEvent(event);
 }
 
+void Runtime::SetGazeTarget(const GazeTarget& target) {
+    std::scoped_lock lock{mutex};
+    gaze_target = target;
+    gaze_target_time = std::chrono::steady_clock::now();
+}
+
+GazeTarget Runtime::GetGazeTarget() const {
+    std::scoped_lock lock{mutex};
+    GazeTarget target = gaze_target;
+    if (std::chrono::steady_clock::now() - gaze_target_time > std::chrono::milliseconds{100}) {
+        target.valid = false;
+    }
+    return target;
+}
+
 void Runtime::UpdateHead(const DeviceState& host_state) {
     std::scoped_lock lock{mutex};
     // How fast the head moves, by where it is from one time to the next: for a host that does

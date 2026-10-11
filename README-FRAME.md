@@ -192,6 +192,7 @@ form `NAME=value %command%`. The defaults below refer to `tools/launch-frame.sh`
 | `SHADPS4_TITLE_RESOLUTION=4` | 960×1080 per eye |
 | `SHADPS4_TITLE_RESOLUTION=5` | 1200×1280 per eye |
 | `SHADPS4_TITLE_RESOLUTION=6` | 1440×1536 per eye |
+| `SHADPS4_VR_FOVEATION=1` | Experimental eye-tracked variable-rate shading; defaults to preset 5 unless a resolution is explicitly set |
 | `SHADPS4_MAX_MSAA=1` | Default maximum of one MSAA sample |
 | `SHADPS4_FLUSH_DRAWS=64` | Default GPU command flush interval |
 | `SHADPS4_XR_WAIT=30` | Default wait, in seconds, for a headset |
@@ -202,6 +203,15 @@ For example:
 ```sh
 SHADPS4_TITLE_RESOLUTION=4 ~/Applications/astroquest-frame/launch.sh
 ```
+
+Enable eye-tracked foveation from the Frame shortcut's launch options with
+`SHADPS4_VR_FOVEATION=1 %command%`. It requires OpenXR eye-gaze support and
+Vulkan fragment-shading-rate attachments. If either is unavailable, the game
+uses full-rate shading and records the fallback in its console log. The gaze
+sample is mapped across wide side-by-side stereo passes; invalid or older than
+100 ms samples also use full-rate shading. This experimental path has not yet
+been benchmarked or visually verified on the Frame, and does not promise a
+performance gain.
 
 The inherited pacing code defaults to `SHADPS4_VR_PACE=1`, targeting one rendered
 frame per headset refresh. The launcher's `SHADPS4_VR_FPS_CAP=60` default does not

@@ -53,6 +53,14 @@ public:
         return allocator;
     }
 
+    bool IsFragmentShadingRateSupported() const {
+        return fragment_shading_rate;
+    }
+
+    vk::Extent2D FragmentShadingRateTexelSize() const {
+        return shading_rate_texel_size;
+    }
+
     /// Returns a list of the available physical devices
     std::span<const vk::PhysicalDevice> GetPhysicalDevices() const {
         return physical_devices;
@@ -532,6 +540,10 @@ private:
     vk::PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR
         workgroup_memory_explicit_layout_features;
     vk::PhysicalDeviceImage2DViewOf3DFeaturesEXT image_2d_view_of_3d_features;
+    vk::PhysicalDeviceFragmentShadingRateFeaturesKHR fragment_shading_rate_features;
+    vk::PhysicalDeviceFragmentShadingRatePropertiesKHR fragment_shading_rate_properties;
+    vk::Extent2D shading_rate_texel_size{8, 8};
+    bool fragment_shading_rate{};
     vk::PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT list_restart_features;
     vk::DriverIdKHR driver_id;
     vk::UniqueDebugUtilsMessengerEXT debug_callback{};

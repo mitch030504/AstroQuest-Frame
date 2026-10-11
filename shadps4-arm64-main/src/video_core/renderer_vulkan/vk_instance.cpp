@@ -233,6 +233,12 @@ std::string Instance::GetDriverVersionName() {
 }
 
 bool Instance::CreateDevice() {
+    const char* foveation_env = std::getenv("SHADPS4_VR_FOVEATION");
+    const bool foveation_requested = foveation_env != nullptr && foveation_env[0] == '1';
+    const bool shading_rate_extension =
+        foveation_requested &&
+        std::ranges::find(available_extensions, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME) !=
+            available_extensions.end();
     const vk::StructureChain feature_chain =
         physical_device
             .getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
@@ -242,7 +248,8 @@ bool Instance::CreateDevice() {
                           vk::PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT,
                           vk::PhysicalDeviceShaderAtomicFloat2FeaturesEXT,
                           vk::PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR,
-                          vk::PhysicalDeviceImage2DViewOf3DFeaturesEXT>();
+                          vk::PhysicalDeviceImage2DViewOf3DFeaturesEXT,
+                          vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
     features = feature_chain.get().features;
     LOG_INFO(Render_Vulkan, "GPU_ClipCull: clip={} cull={} combined={} featClip={} featCull={}",
              properties.limits.maxClipDistances, properties.limits.maxCullDistances,
@@ -253,11 +260,16 @@ bool Instance::CreateDevice() {
     const vk::StructureChain properties_chain = physical_device.getProperties2<
         vk::PhysicalDeviceProperties2, vk::PhysicalDeviceVulkan11Properties,
         vk::PhysicalDeviceVulkan12Properties, vk::PhysicalDeviceVulkan13Properties,
-        vk::PhysicalDevicePushDescriptorPropertiesKHR>();
+        vk::PhysicalDevicePushDescriptorPropertiesKHR,
+        vk::PhysicalDeviceFragmentShadingRatePropertiesKHR>();
     vk11_props = properties_chain.get<vk::PhysicalDeviceVulkan11Properties>();
     vk12_props = properties_chain.get<vk::PhysicalDeviceVulkan12Properties>();
     vk13_props = properties_chain.get<vk::PhysicalDeviceVulkan13Properties>();
     push_descriptor_props = properties_chain.get<vk::PhysicalDevicePushDescriptorPropertiesKHR>();
+    fragment_shading_rate_properties =
+        properties_chain.get<vk::PhysicalDeviceFragmentShadingRatePropertiesKHR>();
+    fragment_shading_rate_features =
+        feature_chain.get<vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
     LOG_INFO(Render_Vulkan, "Physical device subgroup size {}", vk11_props.subgroupSize);
 
     if (available_extensions.empty()) {
@@ -298,6 +310,49 @@ bool Instance::CreateDevice() {
     // (step-rate) vertex fetch silently degrades to per-vertex (divisor=1). Per-vertex
     // attributes are unaffected. Mali/Immortalis drivers do not expose this extension.
     vertex_attribute_divisor = add_extension(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
+    bool shading_rate_levels_supported = false;
+    vk::ImageFormatProperties shading_rate_image_properties{};
+    if (shading_rate_extension && fragment_shading_rate_features.attachmentFragmentShadingRate) {
+        u32 count{};
+        if (physical_device.getFragmentShadingRatesKHR(&count, nullptr) == vk::Result::eSuccess) {
+            std::vector<vk::PhysicalDeviceFragmentShadingRateKHR> rates(count);
+            if (physical_device.getFragmentShadingRatesKHR(&count, rates.data()) ==
+                vk::Result::eSuccess) {
+                const auto supports = [&](vk::FragmentShadingRateNV rate) {
+                    return std::ranges::any_of(rates, [&](const auto& supported) {
+                        return supported.shadingRate == rate;
+                    });
+                };
+                shading_rate_levels_supported =
+                    supports(vk::FragmentShadingRateNV::e1InvocationPerPixel) &&
+                    supports(vk::FragmentShadingRateNV::e1InvocationPer2X2Pixels) &&
+                    supports(vk::FragmentShadingRateNV::e1InvocationPer4X4Pixels);
+            }
+        }
+        const auto [format_result, format_properties] =
+            physical_device.getImageFormatProperties(
+                vk::Format::eR8Uint, vk::ImageType::e2D, vk::ImageTiling::eOptimal,
+                vk::ImageUsageFlagBits::eFragmentShadingRateAttachmentKHR |
+                    vk::ImageUsageFlagBits::eTransferDst,
+                {});
+        if (format_result == vk::Result::eSuccess) {
+            shading_rate_image_properties = format_properties;
+        }
+    }
+    fragment_shading_rate =
+        shading_rate_extension && fragment_shading_rate_features.attachmentFragmentShadingRate &&
+        shading_rate_levels_supported &&
+        add_extension(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME) &&
+        shading_rate_image_properties.maxExtent.width >= 4096 &&
+        shading_rate_image_properties.maxExtent.height >= 4096;
+    if (fragment_shading_rate) {
+        shading_rate_texel_size = fragment_shading_rate_properties
+                                      .minFragmentShadingRateAttachmentTexelSize;
+    } else if (foveation_requested) {
+        LOG_WARNING(Render_Vulkan,
+                    "Foveation requested but fragment shading-rate attachments are unavailable; "
+                    "using full-rate rendering");
+    }
 
     // Optional
     maintenance_8 = add_extension(VK_KHR_MAINTENANCE_8_EXTENSION_NAME);
@@ -591,10 +646,16 @@ bool Instance::CreateDevice() {
             .image2DViewOf3D = image_2d_view_of_3d_features.image2DViewOf3D,
             .sampler2DViewOf3D = image_2d_view_of_3d_features.sampler2DViewOf3D,
         },
+        vk::PhysicalDeviceFragmentShadingRateFeaturesKHR{
+            .attachmentFragmentShadingRate = fragment_shading_rate,
+        },
     };
 
     if (!custom_border_color) {
         device_chain.unlink<vk::PhysicalDeviceCustomBorderColorFeaturesEXT>();
+    }
+    if (!fragment_shading_rate) {
+        device_chain.unlink<vk::PhysicalDeviceFragmentShadingRateFeaturesKHR>();
     }
     if (!dynamic_state_3) {
         device_chain.unlink<vk::PhysicalDeviceExtendedDynamicState3FeaturesEXT>();
