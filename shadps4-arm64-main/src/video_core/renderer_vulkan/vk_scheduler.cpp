@@ -12,6 +12,8 @@
 #include <ctime>
 #include <utility>
 
+#include <vk_mem_alloc.h>
+
 #include "core/vr/foveation_map.h"
 #include "core/vr/openxr_host.h"
 #include "core/vr/vr_runtime.h"
