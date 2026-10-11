@@ -561,9 +561,6 @@ struct OpenXrHost::Impl {
         const bool foveation_requested = foveation_env != nullptr && foveation_env[0] == '1';
         gaze_extension =
             foveation_requested && enable_if_offered(XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME);
-        if (foveation_requested && !gaze_extension) {
-            LOG_WARNING(Core_Vr, "Eye-gaze extension unavailable; foveation will use full rate");
-        }
         has_refresh_rate = enable_if_offered(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
         has_frame_controller = enable_if_offered("XR_VALVE_frame_controller_interaction");
 #ifdef _WIN32
@@ -1000,7 +997,6 @@ struct OpenXrHost::Impl {
             gaze_info.subactionPaths = &gaze_path;
             if (XR_FAILED(xrCreateAction(action_set, &gaze_info, &act_gaze))) {
                 gaze_extension = false;
-                LOG_WARNING(Core_Vr, "Eye-gaze action unavailable; foveation will use full rate");
             }
         }
         if (!made) {
@@ -1087,7 +1083,6 @@ struct OpenXrHost::Impl {
             suggested.suggestedBindings = &binding;
             if (XR_FAILED(xrSuggestInteractionProfileBindings(instance, &suggested))) {
                 gaze_extension = false;
-                LOG_WARNING(Core_Vr, "Eye-gaze binding unavailable; foveation will use full rate");
             }
         }
 
@@ -1114,7 +1109,6 @@ struct OpenXrHost::Impl {
             if (XR_FAILED(xrCreateActionSpace(session, &space_info, &gaze_space))) {
                 gaze_space = XR_NULL_HANDLE;
                 gaze_extension = false;
-                LOG_WARNING(Core_Vr, "Eye-gaze space unavailable; foveation will use full rate");
             }
         }
         for (int hand = 0; hand < 2; ++hand) {
