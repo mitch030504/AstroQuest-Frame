@@ -557,12 +557,11 @@ void Scheduler::BeginRendering(const RenderState& new_state) {
                     new_state.width, new_state.height, foveation->texel_size.width,
                     foveation->texel_size.height, Core::Vr::Runtime::Instance().TitleFov(), gaze);
                 VideoCore::UniqueBuffer upload{instance.GetDevice(), instance.GetAllocator()};
-                VmaAllocationInfo allocation_info{};
                 upload.Create(vk::BufferCreateInfo{
                                   .size = rates.size(),
                                   .usage = vk::BufferUsageFlagBits::eTransferSrc,
                               },
-                              VideoCore::MemoryUsage::Upload, &allocation_info);
+                              VideoCore::MemoryUsage::Upload, nullptr);
                 void* mapped{};
                 ASSERT_MSG(vmaMapMemory(instance.GetAllocator(), upload.allocation, &mapped) ==
                                VK_SUCCESS,
